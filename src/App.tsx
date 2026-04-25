@@ -6,6 +6,7 @@ import { CommandPalette, type PaletteAction } from '@/components/command-palette
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { ProfileManager } from '@/components/profile-manager/ProfileManager';
 import { SplitPane } from '@/components/panes/SplitPane';
+import { reorderTabs } from '@/components/tabs/reorderTabs';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { ToastContainer } from '@/components/error/Toast';
 import { dismissToast, showToast, useToasts } from '@/lib/toast';
@@ -304,6 +305,10 @@ function AppShell() {
     closeTab(activeIdRef.current);
   }, [closeTab]);
 
+  const reorderOpenTabs = useCallback((sourceId: string, targetId: string) => {
+    setTabs((cur) => reorderTabs(cur, sourceId, targetId));
+  }, []);
+
   /**
    * ⌘W: close the focused pane if the active tab has more than one leaf,
    * otherwise close the tab.
@@ -493,6 +498,7 @@ function AppShell() {
         activeId={activeId}
         onSelect={setActiveId}
         onClose={closeTab}
+        onReorder={reorderOpenTabs}
         onNew={() => openNewTab()}
       />
       <div
