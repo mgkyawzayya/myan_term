@@ -13,6 +13,7 @@
     "shell:allow-open",
     "dialog:default",
     "os:default",
-    "clipboard-manager:default"
+    "clipboard-manager:default",
+    "updater:default"
   ]
 }

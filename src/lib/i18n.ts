@@ -26,6 +26,14 @@ const STRINGS_EN: Record<string, string> = {
   'profile.connect': 'Connect',
   'profile.delete': 'Delete profile',
   'pty.exit': 'Process exited',
+  'updater.section': 'Updates',
+  'updater.check': 'Check for updates',
+  'updater.checking': 'Checking…',
+  'updater.uptodate': "You're on the latest version",
+  'updater.available': 'Update available',
+  'updater.download': 'Download & restart',
+  'updater.downloading': 'Downloading…',
+  'updater.failed': 'Update check failed',
 };
 
 let strings: Record<string, string> = STRINGS_EN;

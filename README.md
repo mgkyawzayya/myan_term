@@ -100,6 +100,58 @@ in the installer (also copy them to `src-tauri/fonts/`):
 Without these the renderer gracefully falls back to system fonts (Noto Sans
 Myanmar, Pyidaungsu).
 
+## Releases & auto-update
+
+MyanTerm uses [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/)
+wired to a GitHub Releases JSON feed. The updater endpoint is configured in
+`src-tauri/tauri.conf.json` to:
+
+```
+https://github.com/mgkyawzayya/myan_term/releases/latest/download/latest.json
+```
+
+### One-time signing-key setup (per release maintainer)
+
+Tauri's updater verifies installer signatures with an Ed25519 keypair. Generate
+one *once* and keep the private key safe (1Password, age, etc.):
+
+```bash
+mkdir -p ~/.tauri
+pnpm tauri signer generate -- -w ~/.tauri/myanterm.key
+```
+
+Copy the resulting **public key** into `plugins.updater.pubkey` in
+`src-tauri/tauri.conf.json` (it currently ships empty so devs cannot
+accidentally release an unsignable build — the build will refuse). Keep the
+**private key** out of git.
+
+### Building a signed release locally
+
+Export the private key and password before building so `tauri build` signs the
+artefacts and emits a `*.sig` next to each installer:
+
+```bash
+export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/myanterm.key)"
+export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="…"
+pnpm tauri build
+```
+
+### CI
+
+The GitHub Actions release workflow (`.github/workflows/release.yml`) reads the
+same env vars from repository secrets, runs `pnpm tauri build` on each target
+OS, and publishes an aggregated `latest.json` to the GitHub Release alongside
+the platform installers. Clients pointing at the endpoint above will then see
+the new version through `Settings → Advanced → Updates`.
+
+### Bundle targets
+
+`bundle.targets` is now an explicit list — `["deb", "rpm", "appimage", "app",
+"dmg", "msi", "nsis"]` — so a single config drives all three Linux package
+formats plus macOS `.app`/`.dmg` and Windows `.msi`/`.nsis`. Linux `.deb`
+declares dependencies on `libwebkit2gtk-4.1-0` and `libgtk-3-0`; the AppImage
+disables `bundleMediaFramework` to keep the binary small (CLAUDE.md R10).
+
 ## License
 
 MIT OR Apache-2.0 (dual-licensed) for the source tree. Bundled fonts retain

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { themeIds } from '@/lib/themes';
 import { t } from '@/lib/i18n';
+import { isTauri } from '@/lib/tauri';
 import type { CursorStyle, Settings, ThemeId } from '@/types';
 
 export type SettingsPanelProps = {
@@ -238,6 +239,7 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
                   }
                 />
               </Field>
+              {isTauri() && <UpdatesSection />}
             </div>
           )}
         </div>
@@ -280,3 +282,110 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 const inputClass =
   'w-full rounded-md border border-zinc-700/70 bg-zinc-900/70 px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500/60';
 const selectClass = inputClass;
+
+type UpdateState =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'uptodate' }
+  | { kind: 'available'; version: string; notes: string; update: UpdateLike }
+  | { kind: 'downloading' }
+  | { kind: 'error'; message: string };
+
+type UpdateLike = {
+  available: boolean;
+  version: string;
+  body?: string | null;
+  downloadAndInstall: () => Promise<void>;
+};
+
+function UpdatesSection() {
+  const [state, setState] = useState<UpdateState>({ kind: 'idle' });
+
+  const handleCheck = async () => {
+    setState({ kind: 'checking' });
+    try {
+      const mod = await import('@tauri-apps/plugin-updater');
+      const update = (await mod.check()) as UpdateLike | null;
+      if (update && update.available) {
+        setState({
+          kind: 'available',
+          version: update.version,
+          notes: update.body ?? '',
+          update,
+        });
+      } else {
+        setState({ kind: 'uptodate' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('updater:check failed', err);
+      setState({ kind: 'error', message });
+    }
+  };
+
+  const handleInstall = async () => {
+    if (state.kind !== 'available') return;
+    const update = state.update;
+    setState({ kind: 'downloading' });
+    try {
+      await update.downloadAndInstall();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('updater:install failed', err);
+      setState({ kind: 'error', message });
+    }
+  };
+
+  return (
+    <section className="space-y-3 border-t border-zinc-800 pt-5">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-sm text-zinc-400">{t('updater.section')}</span>
+        <button
+          type="button"
+          onClick={handleCheck}
+          disabled={state.kind === 'checking' || state.kind === 'downloading'}
+          className="rounded-md border border-zinc-700/70 bg-zinc-900/70 px-3 py-1.5 text-sm text-zinc-100 transition hover:border-emerald-500/60 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {state.kind === 'checking' ? t('updater.checking') : t('updater.check')}
+        </button>
+      </div>
+      {state.kind === 'uptodate' && (
+        <p className="rounded-md bg-zinc-900/60 px-3 py-2 text-xs text-zinc-400">
+          {t('updater.uptodate')}
+        </p>
+      )}
+      {state.kind === 'available' && (
+        <div className="space-y-2 rounded-md border border-emerald-700/40 bg-emerald-950/20 p-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm text-emerald-200">
+              {t('updater.available')}{' '}
+              <span className="font-mono text-emerald-100">v{state.version}</span>
+            </p>
+            <button
+              type="button"
+              onClick={handleInstall}
+              className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm text-white transition hover:bg-emerald-500"
+            >
+              {t('updater.download')}
+            </button>
+          </div>
+          {state.notes && (
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-zinc-950/70 p-2 text-[11px] leading-snug text-zinc-300">
+              {state.notes}
+            </pre>
+          )}
+        </div>
+      )}
+      {state.kind === 'downloading' && (
+        <p className="rounded-md bg-zinc-900/60 px-3 py-2 text-xs text-zinc-400">
+          {t('updater.downloading')}
+        </p>
+      )}
+      {state.kind === 'error' && (
+        <p className="rounded-md border border-red-800/60 bg-red-950/30 px-3 py-2 text-xs text-red-300">
+          {`${t('updater.failed')}: ${state.message}`}
+        </p>
+      )}
+    </section>
+  );
+}
