@@ -1,0 +1,8 @@
+# Pinned so local `cargo` and the `dtolnay/rust-toolchain@1.94.0` action in
+# .github/workflows/{ci,release}.yml see the same compiler. Bumping this is a
+# deliberate PR — `stable` floats and historically introduced new clippy lints
+# mid-release that broke green builds.
+[toolchain]
+channel = "1.94.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

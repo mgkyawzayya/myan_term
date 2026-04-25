@@ -8,7 +8,7 @@ on:
 jobs:
   lint-and-test-frontend:
     name: Frontend lint + test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,13 +49,17 @@ jobs:
 
   lint-and-test-rust:
     name: Rust lint + test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Pin to the same rustc version as the dev box (CLAUDE.md R7 — perf
+      # regressions and clippy-lint drift block merges). `stable` floats and
+      # has historically tripped on new lints landing mid-release; the bump
+      # is reviewed deliberately in a PR.
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.0
         with:
           components: rustfmt, clippy
 
@@ -68,8 +72,12 @@ jobs:
             libgtk-3-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
+            libxdo-dev \
             pkg-config \
-            build-essential
+            build-essential \
+            curl \
+            wget \
+            file
 
       - name: Cache cargo registry + target
         uses: actions/cache@v4
@@ -120,10 +128,10 @@ jobs:
           cache: pnpm
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Install Tauri Linux dependencies
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.os == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -132,8 +140,12 @@ jobs:
             libgtk-3-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
+            libxdo-dev \
             pkg-config \
-            build-essential
+            build-essential \
+            curl \
+            wget \
+            file
 
       - name: Cache cargo registry + target
         uses: actions/cache@v4

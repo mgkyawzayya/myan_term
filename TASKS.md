@@ -30,7 +30,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done · ⚠️ blocked
 - ✅ **T-003** Add lint/format/typecheck scripts. Configure rustfmt, clippy with `-D warnings`, prettier, eslint, tsc strict.
 - ✅ **T-004** Add `portable-pty` to Cargo.toml. Write `src-tauri/src/pty/manager.rs` with `PtyManager` struct holding HashMap<PtyId, PtySession>. Implement `spawn`, `write`, `resize`, `kill`.
 - ✅ **T-005** Wire Tauri commands `pty_spawn`, `pty_write`, `pty_resize`, `pty_kill` to PtyManager. Emit `pty:data` and `pty:exit` events from a tokio task per PTY.
-- ✅ **T-006** Frontend: install xterm.js 5.x + addons (webgl, unicode11, fit, search, web-links, serialize). Create `Terminal.tsx` component that mounts xterm and binds to Tauri events. Wire keystrokes to `pty_write`.
+- ✅ **T-006** Frontend: install xterm.js 6.x + addons (webgl, unicode11, fit, search, web-links, serialize). Create `Terminal.tsx` component that mounts xterm and binds to Tauri events. Wire keystrokes to `pty_write`.
 - ✅ **T-007** Verify: launch app → see shell prompt → type commands → output appears. **Acceptance: `ls`, `git status`, `echo hello` all work.**
 
 ### Week 2: Myanmar detection + naive overlay

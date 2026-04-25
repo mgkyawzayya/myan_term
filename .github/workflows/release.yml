@@ -13,7 +13,7 @@ jobs:
       matrix:
         os:
           - macos-latest
-          - ubuntu-22.04
+          - ubuntu-24.04
           - windows-latest
     runs-on: ${{ matrix.os }}
     permissions:
@@ -48,10 +48,10 @@ jobs:
           cache: pnpm
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Install Tauri Linux dependencies
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.os == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -60,8 +60,12 @@ jobs:
             libgtk-3-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
+            libxdo-dev \
             pkg-config \
-            build-essential
+            build-essential \
+            curl \
+            wget \
+            file
 
       - name: Cache cargo registry + target
         uses: actions/cache@v4
@@ -110,7 +114,7 @@ jobs:
       # certificates are not configured.
       - name: Tauri build + publish (unsigned)
         if: |
-          matrix.os == 'ubuntu-22.04'
+          matrix.os == 'ubuntu-24.04'
           || (matrix.os == 'macos-latest' && (env.APPLE_ID == '' || env.APPLE_PASSWORD == '' || env.APPLE_CERTIFICATE == ''))
           || (matrix.os == 'windows-latest' && env.WINDOWS_CERTIFICATE == '')
         uses: tauri-apps/tauri-action@v0
