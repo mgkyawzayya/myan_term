@@ -74,7 +74,6 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onReorder, onNew }: 
                 }}
                 onDragStart={(e) => {
                   setDraggedId(tab.id);
-                  setDragOverId(tab.id);
                   e.dataTransfer.effectAllowed = 'move';
                   e.dataTransfer.setData('text/plain', tab.id);
                 }}
@@ -85,7 +84,6 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onReorder, onNew }: 
                   if (!draggedId || draggedId === tab.id) return;
                   e.preventDefault();
                   e.dataTransfer.dropEffect = 'move';
-                  setDragOverId(tab.id);
                 }}
                 onDrop={(e) => {
                   e.preventDefault();
