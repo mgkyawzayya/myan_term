@@ -3,6 +3,8 @@
 
 const g = globalThis as Record<string, unknown>;
 
+g.IS_REACT_ACT_ENVIRONMENT = true;
+
 if (typeof g.OffscreenCanvas === 'undefined') {
   g.OffscreenCanvas = class {
     width: number;

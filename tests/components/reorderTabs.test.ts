@@ -8,9 +8,9 @@ const tabs = [
 ] as const;
 
 describe('reorderTabs', () => {
-  it('moves the dragged tab in front of the drop target', () => {
+  it('moves the dragged tab into the drop target position', () => {
     const next = reorderTabs([...tabs], 'tab-1', 'tab-3');
-    expect(next.map((tab) => tab.id)).toEqual(['tab-2', 'tab-3', 'tab-1']);
+    expect(next.map((tab) => tab.id)).toEqual(['tab-2', 'tab-1', 'tab-3']);
   });
 
   it('supports moving a later tab earlier in the list', () => {

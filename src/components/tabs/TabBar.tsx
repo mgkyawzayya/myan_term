@@ -56,51 +56,61 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onReorder, onNew }: 
         aria-orientation="horizontal"
         className="flex flex-1 items-center gap-1 overflow-x-auto"
       >
-        {tabs.map((tab) => {
+        {tabs.map((tab, index) => {
           const isActive = tab.id === activeId;
-            return (
-              <div
-                key={tab.id}
-                role="tab"
-                aria-selected={isActive}
-                aria-grabbed={draggedId === tab.id}
-                tabIndex={isActive ? 0 : -1}
-                draggable
-                onClick={() => onSelect(tab.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onSelect(tab.id);
-                  }
-                }}
-                onDragStart={(e) => {
-                  setDraggedId(tab.id);
-                  e.dataTransfer.effectAllowed = 'move';
-                  e.dataTransfer.setData('text/plain', tab.id);
-                }}
-                onDragEnter={() => {
-                  if (draggedId && draggedId !== tab.id) setDragOverId(tab.id);
-                }}
-                onDragOver={(e) => {
-                  if (!draggedId || draggedId === tab.id) return;
+          return (
+            <div
+              key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              aria-grabbed={draggedId === tab.id}
+              tabIndex={isActive ? 0 : -1}
+              draggable
+              onClick={() => onSelect(tab.id)}
+              onKeyDown={(e) => {
+                if (e.shiftKey && e.key === 'ArrowLeft' && index > 0) {
                   e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                }}
-                onDrop={(e) => {
+                  onReorder(tab.id, tabs[index - 1]?.id ?? tab.id);
+                  return;
+                }
+                if (e.shiftKey && e.key === 'ArrowRight' && index < tabs.length - 1) {
                   e.preventDefault();
-                  handleDrop(tab.id);
-                }}
-                onDragEnd={clearDragState}
-                className={[
-                  'group flex max-w-[220px] cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60',
-                  isActive
-                    ? 'bg-zinc-800/80 text-zinc-100'
-                    : 'text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-200',
-                  draggedId === tab.id ? 'opacity-60' : '',
-                  dragOverId === tab.id && draggedId !== tab.id ? 'ring-2 ring-emerald-500/50' : '',
-                ].join(' ')}
-                title={tab.title}
-              >
+                  onReorder(tab.id, tabs[index + 1]?.id ?? tab.id);
+                  return;
+                }
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelect(tab.id);
+                }
+              }}
+              onDragStart={(e) => {
+                setDraggedId(tab.id);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', tab.id);
+              }}
+              onDragEnter={() => {
+                if (draggedId && draggedId !== tab.id) setDragOverId(tab.id);
+              }}
+              onDragOver={(e) => {
+                if (!draggedId || draggedId === tab.id) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDrop(tab.id);
+              }}
+              onDragEnd={clearDragState}
+              className={[
+                'group flex max-w-[220px] cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60',
+                isActive
+                  ? 'bg-zinc-800/80 text-zinc-100'
+                  : 'text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-200',
+                draggedId === tab.id ? 'opacity-60' : '',
+                dragOverId === tab.id && draggedId !== tab.id ? 'ring-2 ring-emerald-500/50' : '',
+              ].join(' ')}
+              title={tab.title}
+            >
               <span className="truncate">{tab.title || t('tab.untitled')}</span>
               <button
                 type="button"
