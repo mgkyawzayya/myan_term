@@ -17,7 +17,9 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done · ⚠️ blocked
 > verification matrix (typecheck / vitest 34 ✅ / cargo test 4 ✅ / vite build /
 > cargo check / clippy `-D warnings`) green.
 >
-> Phase 2/3 in flight on branch `claude/develop-file-data-app-Tzpws`.
+> **Phase 2 (T-025 → T-043) complete** — Tabs with drag reordering, pane splits,
+> SSH profiles with ~/.ssh/config autocomplete, settings UI, 6 themes, command
+> palette, session restore, SSH compatibility tests. Tagged `v0.5.0-beta`.
 
 ---
 
@@ -84,7 +86,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done · ⚠️ blocked
 - ✅ **T-035** Profile manager UI: list, add/edit form, delete with confirm. Use shadcn dialogs/forms.
 - ✅ **T-036** "Quick connect" — open profile in new tab, runs the ssh command. **Acceptance: add profile for a remote host, click quick-connect, get remote shell.**
 - ✅ **T-037** Read `~/.ssh/config` for host autocomplete in profile form (P1, may defer).
-- ⬜ **T-038** Run CT-09, CT-10 (SSH local + jump). **Acceptance: all CT tests pass over SSH.**
+- ✅ **T-038** Run CT-09, CT-10 (SSH local + jump). **Acceptance: all CT tests pass over SSH.**
 
 ### Week 8: Settings + command palette
 
@@ -92,7 +94,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done · ⚠️ blocked
 - ✅ **T-040** Built-in themes: One Dark, Solarized Dark/Light, Dracula, Nord, Tokyo Night. Theme switcher in settings.
 - ✅ **T-041** Command palette (Cmd+Shift+P) using cmdk. Commands: New tab, New window, Open profile, Theme switch, Settings, Reload.
 - ✅ **T-042** Session restore — on quit, save tab/pane structure to session.json. On launch, restore layout (NOT buffer content). **Acceptance: 6 tabs with splits → quit → relaunch → same layout.**
-- ⬜ **T-043** Phase 2 beta build. Tag `v0.5.0-beta`.
+- ✅ **T-043** Phase 2 beta build. Tag `v0.5.0-beta`.
 
 ---
 

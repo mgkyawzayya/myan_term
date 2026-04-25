@@ -1,7 +1,7 @@
 {
   "name": "myanterm",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.5.0",
   "type": "module",
   "description": "MyanTerm — cross-platform GPU-accelerated terminal emulator with first-class Myanmar (Burmese) text rendering",
   "scripts": {
