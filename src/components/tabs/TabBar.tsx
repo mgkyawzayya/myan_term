@@ -63,6 +63,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onReorder, onNew }: 
                 key={tab.id}
                 role="tab"
                 aria-selected={isActive}
+                aria-grabbed={draggedId === tab.id}
                 tabIndex={isActive ? 0 : -1}
                 draggable
                 onClick={() => onSelect(tab.id)}
