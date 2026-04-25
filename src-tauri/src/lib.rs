@@ -42,6 +42,7 @@ pub fn run() {
             commands::profile_save,
             commands::profile_delete,
             commands::profile_to_command,
+            commands::ssh_config_hosts,
             commands::settings_get,
             commands::settings_set,
             commands::version,

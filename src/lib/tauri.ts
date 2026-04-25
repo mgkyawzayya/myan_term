@@ -32,6 +32,8 @@ export const profileToCommand = (
 ): Promise<{ argv: string[]; env: Record<string, string> }> =>
   invoke('profile_to_command', { id });
 
+export const sshConfigHosts = (): Promise<string[]> => invoke('ssh_config_hosts');
+
 export const settingsGet = (): Promise<Settings> => invoke('settings_get');
 export const settingsSet = (settings: Settings): Promise<void> =>
   invoke('settings_set', { settings });

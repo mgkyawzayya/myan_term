@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { SshProfile } from '@/types';
 import { t } from '@/lib/i18n';
+import { isTauri, sshConfigHosts } from '@/lib/tauri';
 
 export type ProfileManagerProps = {
   open: boolean;
@@ -20,6 +21,23 @@ export function ProfileManager({
   onConnect,
 }: ProfileManagerProps) {
   const [draft, setDraft] = useState<SshProfile>(emptyProfile());
+  const [configHosts, setConfigHosts] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    sshConfigHosts()
+      .then((hosts) => {
+        if (!cancelled) setConfigHosts(hosts);
+      })
+      .catch((err) => {
+        // Non-fatal: autocomplete is purely a convenience.
+        console.warn('ssh_config_hosts failed', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!open) return null;
 
@@ -93,12 +111,20 @@ export function ProfileManager({
             />
           </Row>
           <Row label="Host">
-            <input
-              required
-              className={inputClass}
-              value={draft.host}
-              onChange={(e) => setDraft({ ...draft, host: e.target.value })}
-            />
+            <>
+              <input
+                required
+                list="ssh-config-hosts"
+                className={inputClass}
+                value={draft.host}
+                onChange={(e) => setDraft({ ...draft, host: e.target.value })}
+              />
+              <datalist id="ssh-config-hosts">
+                {configHosts.map((h) => (
+                  <option key={h} value={h} />
+                ))}
+              </datalist>
+            </>
           </Row>
           <Row label="User">
             <input
