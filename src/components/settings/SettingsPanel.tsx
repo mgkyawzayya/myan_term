@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { themeIds } from '@/lib/themes';
 import { t } from '@/lib/i18n';
 import { isTauri } from '@/lib/tauri';
@@ -15,6 +15,24 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
   const [section, setSection] = useState<'appearance' | 'cursor' | 'shell' | 'advanced'>(
     'appearance',
   );
+  const firstFocusRef = useRef<HTMLButtonElement | null>(null);
+
+  // T-055: focus the first interactive element on open + close on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const focusId = window.setTimeout(() => firstFocusRef.current?.focus(), 0);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.clearTimeout(focusId);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -22,20 +40,28 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('settings.dialog.label')}
       className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="flex h-[560px] w-[820px] max-w-[94vw] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl">
-        <nav className="flex w-44 flex-col gap-1 border-r border-zinc-800 bg-zinc-900/50 p-3 text-sm">
-          {(['appearance', 'cursor', 'shell', 'advanced'] as const).map((id) => (
+        <nav
+          aria-label={t('settings.dialog.label')}
+          className="flex w-44 flex-col gap-1 border-r border-zinc-800 bg-zinc-900/50 p-3 text-sm"
+        >
+          {(['appearance', 'cursor', 'shell', 'advanced'] as const).map((id, idx) => (
             <button
               key={id}
               type="button"
+              ref={idx === 0 ? firstFocusRef : undefined}
               onClick={() => setSection(id)}
+              aria-current={section === id ? 'page' : undefined}
               className={[
-                'rounded-md px-3 py-2 text-left capitalize transition',
+                'rounded-md px-3 py-2 text-left capitalize transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60',
                 section === id
                   ? 'bg-zinc-800 text-zinc-100'
                   : 'text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-100',
@@ -248,11 +274,22 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode | ((id: string) => React.ReactNode);
+}) {
+  // T-055: explicit `htmlFor`/`id` pairing so screen readers announce the
+  // label whenever the input gets focus, even when the markup tree gets
+  // restructured for layout.
+  const id = useId();
+  const rendered = typeof children === 'function' ? children(id) : children;
   return (
-    <label className="flex items-center justify-between gap-4">
+    <label htmlFor={id} className="flex items-center justify-between gap-4">
       <span className="text-sm text-zinc-400">{label}</span>
-      <span className="flex-1 max-w-xs">{children}</span>
+      <span className="flex-1 max-w-xs">{rendered}</span>
     </label>
   );
 }
@@ -265,7 +302,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={[
-        'relative inline-flex h-5 w-9 items-center rounded-full transition',
+        'relative inline-flex h-5 w-9 items-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60',
         checked ? 'bg-emerald-500/80' : 'bg-zinc-700',
       ].join(' ')}
     >
@@ -280,7 +317,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 const inputClass =
-  'w-full rounded-md border border-zinc-700/70 bg-zinc-900/70 px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500/60';
+  'w-full rounded-md border border-zinc-700/70 bg-zinc-900/70 px-3 py-1.5 text-sm text-zinc-100 outline-none transition focus:border-emerald-500/60 focus-visible:ring-2 focus-visible:ring-emerald-500/60';
 const selectClass = inputClass;
 
 type UpdateState =

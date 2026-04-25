@@ -3,10 +3,15 @@ use std::path::PathBuf;
 
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
 
 use crate::errors::{AppError, AppResult};
+
+/// Event name emitted when `profiles.json` could not be parsed and we fell back
+/// to an empty profile list. The frontend surfaces this as a warning toast so
+/// the user knows their saved SSH profiles were silently reset (T-056).
+pub const PROFILES_RESET_EVENT: &str = "profiles:reset";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SshProfile {
@@ -74,7 +79,21 @@ impl ProfileStore {
             .join("profiles.json");
         let inner = if path.exists() {
             let text = std::fs::read_to_string(&path)?;
-            serde_json::from_str::<StoreFile>(&text).unwrap_or_default()
+            match serde_json::from_str::<StoreFile>(&text) {
+                Ok(parsed) => parsed,
+                Err(err) => {
+                    // T-056: a corrupt profiles.json must never block startup.
+                    tracing::warn!(
+                        "profiles.json parse failed; resetting to defaults: {err}"
+                    );
+                    if let Err(emit_err) = app.emit(PROFILES_RESET_EVENT, ()) {
+                        tracing::warn!(
+                            "profiles.json reset event emit failed: {emit_err}"
+                        );
+                    }
+                    StoreFile::default()
+                }
+            }
         } else {
             StoreFile::default()
         };

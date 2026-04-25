@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SshProfile } from '@/types';
 import { t } from '@/lib/i18n';
 import { isTauri, sshConfigHosts } from '@/lib/tauri';
@@ -22,6 +22,7 @@ export function ProfileManager({
 }: ProfileManagerProps) {
   const [draft, setDraft] = useState<SshProfile>(emptyProfile());
   const [configHosts, setConfigHosts] = useState<string[]>([]);
+  const firstFocusRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -39,10 +40,30 @@ export function ProfileManager({
     };
   }, []);
 
+  // T-055: focus the first form field on open + close on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const focusId = window.setTimeout(() => firstFocusRef.current?.focus(), 0);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.clearTimeout(focusId);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('profile.manager.label')}
       className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -66,7 +87,8 @@ export function ProfileManager({
               <button
                 type="button"
                 onClick={() => setDraft(structuredClone(p))}
-                className="flex flex-1 flex-col items-start text-left"
+                aria-label={`${t('profile.add')}: ${p.name}`}
+                className="flex flex-1 flex-col items-start rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
               >
                 <span className="truncate text-sm text-zinc-100">{p.name}</span>
                 <span className="text-xs text-zinc-500">
@@ -75,19 +97,21 @@ export function ProfileManager({
               </button>
               <button
                 type="button"
+                aria-label={`${t('profile.connect')}: ${p.name}`}
                 title={t('profile.connect')}
                 onClick={() => onConnect(p)}
-                className="rounded px-2 py-1 text-xs text-emerald-400 hover:bg-emerald-900/30"
+                className="rounded px-2 py-1 text-xs text-emerald-400 transition hover:bg-emerald-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
               >
-                ↗
+                <span aria-hidden="true">↗</span>
               </button>
               <button
                 type="button"
+                aria-label={`${t('profile.delete')}: ${p.name}`}
                 title={t('profile.delete')}
                 onClick={() => onDelete(p.id)}
-                className="rounded px-2 py-1 text-xs text-zinc-500 opacity-0 group-hover:opacity-100 hover:bg-rose-900/30 hover:text-rose-300"
+                className="rounded px-2 py-1 text-xs text-zinc-500 transition focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 group-hover:opacity-100 hover:bg-rose-900/30 hover:text-rose-300 opacity-0"
               >
-                ×
+                <span aria-hidden="true">×</span>
               </button>
             </div>
           ))}
@@ -105,6 +129,7 @@ export function ProfileManager({
           <Row label="Name">
             <input
               required
+              ref={firstFocusRef}
               className={inputClass}
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
@@ -177,14 +202,14 @@ export function ProfileManager({
           <div className="mt-auto flex justify-end gap-2">
             <button
               type="button"
-              className="rounded-md px-3 py-1.5 text-sm text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100"
+              className="rounded-md px-3 py-1.5 text-sm text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
               onClick={() => setDraft(emptyProfile())}
             >
               Reset
             </button>
             <button
               type="submit"
-              className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-zinc-50 hover:bg-emerald-500"
+              className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-zinc-50 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
             >
               Save profile
             </button>
@@ -196,6 +221,9 @@ export function ProfileManager({
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  // The wrapping `<label>` already associates clicks on the label text with
+  // the first focusable child, so we don't need an explicit `htmlFor` here.
+  // Aria semantics carry through React 19's nested-label support.
   return (
     <label className="flex items-center justify-between gap-4">
       <span className="text-zinc-400">{label}</span>
@@ -220,4 +248,4 @@ function emptyProfile(): SshProfile {
 }
 
 const inputClass =
-  'w-full rounded-md border border-zinc-700/70 bg-zinc-900/70 px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500/60';
+  'w-full rounded-md border border-zinc-700/70 bg-zinc-900/70 px-3 py-1.5 text-sm text-zinc-100 outline-none transition focus:border-emerald-500/60 focus-visible:ring-2 focus-visible:ring-emerald-500/60';

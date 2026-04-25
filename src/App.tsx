@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { Terminal } from '@/components/terminal/Terminal';
 import { TabBar } from '@/components/tabs/TabBar';
 import { CommandPalette, type PaletteAction } from '@/components/command-palette/CommandPalette';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { ProfileManager } from '@/components/profile-manager/ProfileManager';
 import { SplitPane } from '@/components/panes/SplitPane';
+import { ErrorBoundary } from '@/components/error/ErrorBoundary';
+import { ToastContainer } from '@/components/error/Toast';
+import { dismissToast, showToast, useToasts } from '@/lib/toast';
+import { t } from '@/lib/i18n';
 import {
   closeLeaf,
   findLeafIds,
@@ -35,7 +40,25 @@ type StoredTab = TabState & {
   focusedLeafId: string;
 };
 
+/**
+ * Top-level App. Wraps the inner UI in an `ErrorBoundary` + `ToastContainer`
+ * (T-056) so any render-phase crash surfaces a graceful fallback and any
+ * recoverable failure (PTY exit, save error, settings.json corruption) shows a
+ * toast instead of being silently swallowed.
+ */
 export default function App() {
+  const toasts = useToasts();
+  return (
+    <ErrorBoundary
+      onError={(err) => showToast('error', `${t('error.crash')}: ${err.message}`)}
+    >
+      <AppShell />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+    </ErrorBoundary>
+  );
+}
+
+function AppShell() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   // T-042: defer initial tab creation until session restore resolves so we
   // never spawn a PTY for a layout we are about to throw away. `restored`
@@ -57,10 +80,37 @@ export default function App() {
     if (!isTauri()) return;
     void settingsGet()
       .then((s) => setSettings(s))
-      .catch(() => undefined);
+      .catch((err) =>
+        showToast('warning', `${t('error.save_failed')}: ${err}`),
+      );
     void profileList()
       .then((p) => setProfiles(p))
-      .catch(() => undefined);
+      .catch((err) =>
+        showToast('warning', `${t('error.save_failed')}: ${err}`),
+      );
+  }, []);
+
+  // T-056: backend signals when settings.json / profiles.json was corrupted
+  // and reset to defaults. Surface as a warning toast so the user knows their
+  // preferences were silently rebuilt.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlistenSettings: UnlistenFn | undefined;
+    let unlistenProfiles: UnlistenFn | undefined;
+    void listen('settings:reset', () =>
+      showToast('warning', t('error.settings_reset')),
+    ).then((fn) => {
+      unlistenSettings = fn;
+    });
+    void listen('profiles:reset', () =>
+      showToast('warning', t('error.profiles_reset')),
+    ).then((fn) => {
+      unlistenProfiles = fn;
+    });
+    return () => {
+      unlistenSettings?.();
+      unlistenProfiles?.();
+    };
   }, []);
 
   // T-042: restore tab + pane-tree layout on launch. Buffer content is NOT
@@ -115,6 +165,7 @@ export default function App() {
       })
       .catch((err) => {
         console.warn('session_load failed', err);
+        showToast('warning', `${t('error.save_failed')}: ${err}`);
         const fresh = newTab();
         setTabs([fresh]);
         setActiveId(fresh.id);
@@ -125,7 +176,9 @@ export default function App() {
   // Persist settings whenever they change.
   useEffect(() => {
     if (!isTauri()) return;
-    void settingsSet(settings).catch(() => undefined);
+    void settingsSet(settings).catch((err) =>
+      showToast('warning', `${t('error.save_failed')}: ${err}`),
+    );
   }, [settings]);
 
   // T-042: build the session payload from the current tab list. Pulled out so
@@ -421,8 +474,20 @@ export default function App() {
     return <div className="flex h-screen w-screen bg-zinc-950 text-zinc-100" />;
   }
 
+  // T-055: while any modal is open the terminal host gets `inert` so xterm
+  // never steals keystrokes meant for the modal's input. React 19 supports
+  // `inert` as a real boolean attribute.
+  const anyModalOpen = settingsOpen || paletteOpen || profilesOpen;
+
   return (
     <div className="flex h-screen w-screen flex-col bg-zinc-950 text-zinc-100">
+      {/* T-055: keyboard-only users tab here first to skip past chrome. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-emerald-600 focus:px-3 focus:py-1.5 focus:text-sm focus:font-medium focus:text-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+      >
+        {t('a11y.skip_to_terminal')}
+      </a>
       <TabBar
         tabs={tabs}
         activeId={activeId}
@@ -430,7 +495,12 @@ export default function App() {
         onClose={closeTab}
         onNew={() => openNewTab()}
       />
-      <div className="relative flex-1">
+      <div
+        id="main"
+        className="relative flex-1"
+        inert={anyModalOpen}
+        aria-hidden={anyModalOpen || undefined}
+      >
         {tabs.map((tab) => {
           const isActive = tab.id === activeId;
           const settingsForTab = isActive ? tabSettings : settings;
@@ -455,6 +525,12 @@ export default function App() {
                     cwd={tab.cwd}
                     onTitle={(title) => updateTab(tab.id, { title })}
                     onCwd={(cwd) => updateTab(tab.id, { cwd })}
+                    onExit={(code) =>
+                      showToast(
+                        code === 0 ? 'info' : 'warning',
+                        `${t('pty.exit')}${code != null ? ` (code ${code})` : ''}`,
+                      )
+                    }
                     onPtyId={(ptyId) => updateTab(tab.id, { ptyId })}
                   />
                 )}
@@ -464,8 +540,9 @@ export default function App() {
         })}
         <button
           type="button"
+          aria-label={t('profile.manager.open')}
           onClick={() => setProfilesOpen(true)}
-          className="absolute bottom-3 right-3 rounded-full border border-zinc-700/70 bg-zinc-900/70 px-3 py-1.5 text-xs text-zinc-300 shadow-lg backdrop-blur hover:bg-zinc-800/80"
+          className="absolute bottom-3 right-3 rounded-full border border-zinc-700/70 bg-zinc-900/70 px-3 py-1.5 text-xs text-zinc-300 shadow-lg backdrop-blur transition hover:bg-zinc-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
         >
           SSH
         </button>
@@ -491,7 +568,10 @@ export default function App() {
         onClose={() => setProfilesOpen(false)}
         onSave={async (profile) => {
           const next = profile.id ? profile : { ...profile, id: crypto.randomUUID() };
-          if (isTauri()) await profileSave(next).catch(() => undefined);
+          if (isTauri())
+            await profileSave(next).catch((err) =>
+              showToast('warning', `${t('error.save_failed')}: ${err}`),
+            );
           setProfiles((cur) => {
             const filtered = cur.filter((p) => p.id !== next.id);
             return [...filtered, next].sort((a, b) =>
@@ -500,7 +580,10 @@ export default function App() {
           });
         }}
         onDelete={async (id) => {
-          if (isTauri()) await profileDelete(id).catch(() => undefined);
+          if (isTauri())
+            await profileDelete(id).catch((err) =>
+              showToast('warning', `${t('error.save_failed')}: ${err}`),
+            );
           setProfiles((cur) => cur.filter((p) => p.id !== id));
         }}
         onConnect={(p) => {

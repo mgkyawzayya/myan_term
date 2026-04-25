@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Command } from 'cmdk';
 import { t } from '@/lib/i18n';
 import { themeIds } from '@/lib/themes';
@@ -20,9 +20,20 @@ export type CommandPaletteProps = {
 
 export function CommandPalette({ open, onOpenChange, profiles, onAction }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!open) setQuery('');
+  }, [open]);
+
+  // T-055: focus the search input on open so keyboard-only users land in the
+  // right place. cmdk handles its own list-arrow navigation from there.
+  useEffect(() => {
+    if (open) {
+      // Defer to the next paint so the input is mounted before focus.
+      const id = window.setTimeout(() => inputRef.current?.focus(), 0);
+      return () => window.clearTimeout(id);
+    }
   }, [open]);
 
   if (!open) return null;
@@ -34,21 +45,26 @@ export function CommandPalette({ open, onOpenChange, profiles, onAction }: Comma
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('palette.title')}
       className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 p-24 backdrop-blur-sm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onOpenChange(false);
       }}
     >
       <Command
-        label="Command palette"
+        label={t('palette.title')}
         className="w-[560px] max-w-[92vw] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/90 shadow-2xl"
         loop
       >
         <Command.Input
+          ref={inputRef}
           value={query}
           onValueChange={setQuery}
           placeholder={t('palette.placeholder')}
-          className="w-full bg-transparent px-4 py-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+          aria-label={t('palette.placeholder')}
+          className="w-full bg-transparent px-4 py-3 text-sm text-zinc-100 outline-none ring-inset placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
         />
         <Command.List className="max-h-[360px] overflow-y-auto border-t border-zinc-800/60 p-2">
           <Command.Empty className="px-2 py-4 text-center text-xs text-zinc-500">
