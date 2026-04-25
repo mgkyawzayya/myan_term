@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability set for MyanTerm windows",
+  "windows": ["main", "*"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:default",
+    "core:webview:default",
+    "core:app:default",
+    "store:default",
+    "shell:allow-open",
+    "dialog:default",
+    "os:default",
+    "clipboard-manager:default"
+  ]
+}

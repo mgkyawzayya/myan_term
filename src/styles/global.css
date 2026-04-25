@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bg: #0b0b0e;
+  --color-fg: #e5e7eb;
+}
+
+/* Padauk + JetBrains Mono — files dropped in /public/fonts at build time. */
+@font-face {
+  font-family: 'Padauk';
+  src: url('/fonts/Padauk-Regular.ttf') format('truetype');
+  font-display: block;
+  font-weight: 400;
+  font-style: normal;
+  unicode-range:
+    U+1000-109F, U+AA60-AA7F, U+A9E0-A9FF;
+}
+
+@font-face {
+  font-family: 'Padauk';
+  src: url('/fonts/Padauk-Bold.ttf') format('truetype');
+  font-display: block;
+  font-weight: 700;
+  font-style: normal;
+  unicode-range:
+    U+1000-109F, U+AA60-AA7F, U+A9E0-A9FF;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Regular.ttf') format('truetype');
+  font-display: block;
+  font-weight: 400;
+  font-style: normal;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.myanterm-host .xterm,
+.myanterm-host .xterm-viewport,
+.myanterm-host .xterm-screen {
+  height: 100%;
+  width: 100%;
+}
+
+.myanterm-overlay span.myanterm-cluster {
+  font-feature-settings: 'kern', 'liga', 'calt';
+  font-variant-ligatures: contextual;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(63 63 70 / 0.6);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(82 82 91 / 0.8);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

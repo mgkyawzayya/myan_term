@@ -1,0 +1,6 @@
+# Tauri build output
+target/
+gen/
+
+# Tauri-generated build cache
+**/*.rs.bk
