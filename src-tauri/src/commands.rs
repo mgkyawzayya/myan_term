@@ -75,6 +75,11 @@ pub fn settings_set(settings: Settings, store: State<'_, SettingsStore>) -> AppR
 }
 
 #[tauri::command]
+pub fn ssh_config_hosts() -> AppResult<Vec<String>> {
+    Ok(crate::profiles::ssh_config::read_hosts().unwrap_or_default())
+}
+
+#[tauri::command]
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
