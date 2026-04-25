@@ -4,20 +4,20 @@ use crate::errors::AppResult;
 use crate::profiles::ssh::{profile_to_command as build_command, SshCommand};
 use crate::profiles::{ProfileStore, SshProfile};
 use crate::pty::manager::{PtyManager, PtySpawnArgs};
+use crate::sessions::{SessionState, SessionStore};
 use crate::settings::{Settings, SettingsStore};
 
 #[tauri::command]
-pub fn pty_spawn(args: PtySpawnArgs, manager: State<'_, PtyManager>) -> AppResult<serde_json::Value> {
+pub fn pty_spawn(
+    args: PtySpawnArgs,
+    manager: State<'_, PtyManager>,
+) -> AppResult<serde_json::Value> {
     let id = manager.spawn(args)?;
     Ok(serde_json::json!({ "pty_id": id }))
 }
 
 #[tauri::command]
-pub fn pty_write(
-    pty_id: String,
-    data: String,
-    manager: State<'_, PtyManager>,
-) -> AppResult<()> {
+pub fn pty_write(pty_id: String, data: String, manager: State<'_, PtyManager>) -> AppResult<()> {
     manager.write(&pty_id, &data)
 }
 
@@ -65,6 +65,16 @@ pub fn profile_to_command(id: String, store: State<'_, ProfileStore>) -> AppResu
 }
 
 #[tauri::command]
+pub fn session_load(store: State<'_, SessionStore>) -> AppResult<SessionState> {
+    Ok(store.get())
+}
+
+#[tauri::command]
+pub fn session_save(state: SessionState, store: State<'_, SessionStore>) -> AppResult<()> {
+    store.set(state)
+}
+
+#[tauri::command]
 pub fn settings_get(store: State<'_, SettingsStore>) -> AppResult<Settings> {
     Ok(store.get())
 }
@@ -72,6 +82,11 @@ pub fn settings_get(store: State<'_, SettingsStore>) -> AppResult<Settings> {
 #[tauri::command]
 pub fn settings_set(settings: Settings, store: State<'_, SettingsStore>) -> AppResult<()> {
     store.set(settings)
+}
+
+#[tauri::command]
+pub fn ssh_config_hosts() -> AppResult<Vec<String>> {
+    Ok(crate::profiles::ssh_config::read_hosts().unwrap_or_default())
 }
 
 #[tauri::command]

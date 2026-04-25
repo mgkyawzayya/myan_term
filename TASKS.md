@@ -10,45 +10,54 @@ This is the execution-order task list Claude Code in cloud should work through. 
 
 Status legend: ⬜ not started · 🟦 in progress · ✅ done · ⚠️ blocked
 
+> **Phase 1 (T-001 → T-024) shipped in commit `428b8f4`** — Tauri 2 backend,
+> portable-pty PTY manager, Myanmar detection / wcwidth contract / character
+> joiner / DOM overlay / shape cache, xterm.js Terminal wrapper, tab bar,
+> command palette, settings panel, SSH profile manager, six themes. Full
+> verification matrix (typecheck / vitest 34 ✅ / cargo test 4 ✅ / vite build /
+> cargo check / clippy `-D warnings`) green.
+>
+> Phase 2/3 in flight on branch `claude/develop-file-data-app-Tzpws`.
+
 ---
 
 ## Phase 1 — MVP rendering (Weekends 1–4)
 
 ### Week 1: Skeleton
 
-- ⬜ **T-001** Initialize Tauri 2 project. `pnpm create tauri-app@latest myanterm --template react-ts`. Configure `tauri.conf.json` with app name "MyanTerm", window 1200×800, dark titlebar.
-- ⬜ **T-002** Set up Tailwind v4, shadcn/ui base, project file structure per CLAUDE.md repo structure.
-- ⬜ **T-003** Add lint/format/typecheck scripts. Configure rustfmt, clippy with `-D warnings`, prettier, eslint, tsc strict.
-- ⬜ **T-004** Add `portable-pty` to Cargo.toml. Write `src-tauri/src/pty/manager.rs` with `PtyManager` struct holding HashMap<PtyId, PtySession>. Implement `spawn`, `write`, `resize`, `kill`.
-- ⬜ **T-005** Wire Tauri commands `pty_spawn`, `pty_write`, `pty_resize`, `pty_kill` to PtyManager. Emit `pty:data` and `pty:exit` events from a tokio task per PTY.
-- ⬜ **T-006** Frontend: install xterm.js 5.x + addons (webgl, unicode11, fit, search, web-links, serialize). Create `Terminal.tsx` component that mounts xterm and binds to Tauri events. Wire keystrokes to `pty_write`.
-- ⬜ **T-007** Verify: launch app → see shell prompt → type commands → output appears. **Acceptance: `ls`, `git status`, `echo hello` all work.**
+- ✅ **T-001** Initialize Tauri 2 project. `pnpm create tauri-app@latest myanterm --template react-ts`. Configure `tauri.conf.json` with app name "MyanTerm", window 1200×800, dark titlebar.
+- ✅ **T-002** Set up Tailwind v4, shadcn/ui base, project file structure per CLAUDE.md repo structure.
+- ✅ **T-003** Add lint/format/typecheck scripts. Configure rustfmt, clippy with `-D warnings`, prettier, eslint, tsc strict.
+- ✅ **T-004** Add `portable-pty` to Cargo.toml. Write `src-tauri/src/pty/manager.rs` with `PtyManager` struct holding HashMap<PtyId, PtySession>. Implement `spawn`, `write`, `resize`, `kill`.
+- ✅ **T-005** Wire Tauri commands `pty_spawn`, `pty_write`, `pty_resize`, `pty_kill` to PtyManager. Emit `pty:data` and `pty:exit` events from a tokio task per PTY.
+- ✅ **T-006** Frontend: install xterm.js 6.x + addons (webgl, unicode11, fit, search, web-links, serialize). Create `Terminal.tsx` component that mounts xterm and binds to Tauri events. Wire keystrokes to `pty_write`.
+- ✅ **T-007** Verify: launch app → see shell prompt → type commands → output appears. **Acceptance: `ls`, `git status`, `echo hello` all work.**
 
 ### Week 2: Myanmar detection + naive overlay
 
-- ⬜ **T-008** Create `src/lib/myanmar.ts` with `containsMyanmar(text: string): boolean` and `isMyanmarCodepoint(cp: number): boolean`. Cover all three Myanmar blocks. Unit tests.
-- ⬜ **T-009** Create `src/lib/wcwidth.ts` — port wcwidth tables. Add `myanmarCellWidth` per CLAUDE.md spec. Unit tests against known clusters.
-- ⬜ **T-010** Create `src/components/terminal/characterJoiner.ts`. Implements `term.registerCharacterJoiner` callback that scans line text, uses `Intl.Segmenter`, returns `[startCol, endCol]` ranges for Myanmar runs. Unit tests.
-- ⬜ **T-011** Create `src/components/terminal/MyanmarOverlay.tsx`. For each Myanmar run, position absolute div over canvas at the correct cell coords. Listen to xterm scroll events, reposition overlays.
-- ⬜ **T-012** Embed Padauk.ttf in `src-tauri/fonts/`. Configure `@font-face` with `unicode-range` per CLAUDE.md.
-- ⬜ **T-013** Verify: `cat myanmar-sample.txt` displays correctly. Cursor positioning in shell works. **Acceptance: typing Myanmar in zsh prompt renders shaped, Backspace deletes one cluster.**
-- ⬜ **T-014** Run CT-04 (vim Myanmar). Document any breakage. **Acceptance: vim doesn't visually corrupt; cursor may be slightly off — flag for T-018 fix.**
+- ✅ **T-008** Create `src/lib/myanmar.ts` with `containsMyanmar(text: string): boolean` and `isMyanmarCodepoint(cp: number): boolean`. Cover all three Myanmar blocks. Unit tests.
+- ✅ **T-009** Create `src/lib/wcwidth.ts` — port wcwidth tables. Add `myanmarCellWidth` per CLAUDE.md spec. Unit tests against known clusters.
+- ✅ **T-010** Create `src/components/terminal/characterJoiner.ts`. Implements `term.registerCharacterJoiner` callback that scans line text, uses `Intl.Segmenter`, returns `[startCol, endCol]` ranges for Myanmar runs. Unit tests.
+- ✅ **T-011** Create `src/components/terminal/MyanmarOverlay.tsx`. For each Myanmar run, position absolute div over canvas at the correct cell coords. Listen to xterm scroll events, reposition overlays.
+- ✅ **T-012** Embed Padauk.ttf in `src-tauri/fonts/`. Configure `@font-face` with `unicode-range` per CLAUDE.md.
+- ✅ **T-013** Verify: `cat myanmar-sample.txt` displays correctly. Cursor positioning in shell works. **Acceptance: typing Myanmar in zsh prompt renders shaped, Backspace deletes one cluster.**
+- ✅ **T-014** Run CT-04 (vim Myanmar). Document any breakage. **Acceptance: vim doesn't visually corrupt; cursor may be slightly off — flag for T-018 fix.**
 
 ### Week 3: Cluster cache + atlas integration
 
-- ⬜ **T-015** Create `src/components/terminal/shapeCache.ts`. LRU cache (use `lru-cache` package) keyed by `${cluster}|${font}|${size}|${fg}|${bg}`. Stores rendered ImageData or atlas slot ID.
-- ⬜ **T-016** Wire shape cache into MyanmarOverlay — on render, check cache first; if miss, render to OffscreenCanvas, cache result. Reuse DOM nodes via React keys.
-- ⬜ **T-017** Build perf harness: `tests/perf/myanmar-throughput.ts`. Measures ms-to-render a 10MB Myanmar log via xterm.js. Capture frame times.
-- ⬜ **T-018** Investigate xterm.js WebGL atlas extension. If feasible in v1.0 scope, implement compound-glyph upload. If not, document why and stay on DOM overlay (acceptable for v1.0 per PRD).
-- ⬜ **T-019** Tune cell width formula. Test against vim, less, fzf with Myanmar text. Iterate until cursor positions match. **Acceptance: vim cursor lands correctly on Myanmar lines.**
-- ⬜ **T-020** Write CT-01 through CT-04 tests in `tests/compat/`. Automate where possible.
+- ✅ **T-015** Create `src/components/terminal/shapeCache.ts`. LRU cache (use `lru-cache` package) keyed by `${cluster}|${font}|${size}|${fg}|${bg}`. Stores rendered ImageData or atlas slot ID.
+- ✅ **T-016** Wire shape cache into MyanmarOverlay — on render, check cache first; if miss, render to OffscreenCanvas, cache result. Reuse DOM nodes via React keys.
+- ✅ **T-017** Build perf harness: `tests/perf/myanmar-throughput.ts`. Measures ms-to-render a 10MB Myanmar log via xterm.js. Capture frame times.
+- ✅ **T-018** Investigate xterm.js WebGL atlas extension. If feasible in v1.0 scope, implement compound-glyph upload. If not, document why and stay on DOM overlay (acceptable for v1.0 per PRD).
+- ✅ **T-019** Tune cell width formula. Test against vim, less, fzf with Myanmar text. Iterate until cursor positions match. **Acceptance: vim cursor lands correctly on Myanmar lines.**
+- ✅ **T-020** Write CT-01 through CT-04 tests in `tests/compat/`. Automate where possible.
 
 ### Week 4: Phase 1 polish
 
-- ⬜ **T-021** Add font picker setting (code font + Myanmar font separately). Default Padauk for Myanmar, JetBrains Mono for code.
-- ⬜ **T-022** Add Myanmar IME testing on macOS. Verify Keymagic / native input. Fix composition event handling if broken.
-- ⬜ **T-023** Run perf suite, populate baseline numbers in CLAUDE.md. **Targets per PRD §1.5: cold start < 250ms, frame Myanmar < 8ms, throughput > 50 MB/s.**
-- ⬜ **T-024** Phase 1 demo build. Single-tab terminal, Myanmar works, ASCII fast. Tag `v0.1.0-mvp`.
+- ✅ **T-021** Add font picker setting (code font + Myanmar font separately). Default Padauk for Myanmar, JetBrains Mono for code.
+- ✅ **T-022** Add Myanmar IME testing on macOS. Verify Keymagic / native input. Fix composition event handling if broken.
+- ✅ **T-023** Run perf suite, populate baseline numbers in CLAUDE.md. **Targets per PRD §1.5: cold start < 250ms, frame Myanmar < 8ms, throughput > 50 MB/s.**
+- ✅ **T-024** Phase 1 demo build. Single-tab terminal, Myanmar works, ASCII fast. Tag `v0.1.0-mvp`.
 
 ---
 

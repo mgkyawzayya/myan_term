@@ -3,9 +3,14 @@ use std::path::PathBuf;
 
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::errors::{AppError, AppResult};
+
+/// Event name emitted when `settings.json` could not be parsed and we fell back
+/// to defaults. The frontend listens for this and shows a warning toast so the
+/// user knows their preferences were silently reset (T-056).
+pub const SETTINGS_RESET_EVENT: &str = "settings:reset";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FontSettings {
@@ -91,7 +96,21 @@ impl SettingsStore {
             .join("settings.json");
         let inner = if path.exists() {
             let text = std::fs::read_to_string(&path)?;
-            serde_json::from_str::<Settings>(&text).unwrap_or_default()
+            match serde_json::from_str::<Settings>(&text) {
+                Ok(parsed) => parsed,
+                Err(err) => {
+                    // T-056: a corrupt settings.json must never block startup.
+                    // Log the error, fall back to defaults, and surface the
+                    // event to the frontend so the user gets a toast.
+                    tracing::warn!("settings.json parse failed; resetting to defaults: {err}");
+                    // Emit best-effort: if the frontend isn't ready or emit
+                    // fails, the user sees the next-launch defaults silently.
+                    if let Err(emit_err) = app.emit(SETTINGS_RESET_EVENT, ()) {
+                        tracing::warn!("settings.json reset event emit failed: {emit_err}");
+                    }
+                    Settings::default()
+                }
+            }
         } else {
             Settings::default()
         };

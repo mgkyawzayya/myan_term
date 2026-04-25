@@ -36,3 +36,6 @@ coverage
 .env
 .env.local
 .env.*.local
+
+# Claude Code agent state (sub-agent worktrees, plan files, etc.)
+.claude/

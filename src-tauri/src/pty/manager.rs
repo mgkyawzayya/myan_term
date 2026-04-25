@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
-use crate::errors::{AppError, AppResult};
 use super::platform;
+use crate::errors::{AppError, AppResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -218,8 +218,7 @@ impl PtyManager {
 }
 
 fn home_dir() -> Option<String> {
-    directories::UserDirs::new()
-        .and_then(|d| d.home_dir().to_str().map(|s| s.to_string()))
+    directories::UserDirs::new().and_then(|d| d.home_dir().to_str().map(|s| s.to_string()))
 }
 
 #[cfg(test)]

@@ -31,17 +31,37 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["deb", "rpm", "appimage", "app", "dmg", "msi", "nsis"],
     "category": "DeveloperTool",
     "shortDescription": "Cross-platform GPU terminal with first-class Myanmar text",
     "longDescription": "MyanTerm is a fast, GPU-accelerated terminal emulator that renders Myanmar (Burmese) Unicode correctly while remaining fully compatible with modern TUI tooling (vim, tmux, lazygit, Claude Code).",
+    "copyright": "MIT OR Apache-2.0",
+    "publisher": "MyanTerm",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.png"
     ],
-    "resources": ["fonts/*"]
+    "resources": ["fonts/*"],
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/mgkyawzayya/myan_term/releases/latest/download/latest.json"
+      ],
+      "pubkey": "",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
 }
