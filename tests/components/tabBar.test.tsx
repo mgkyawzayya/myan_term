@@ -41,7 +41,9 @@ describe('TabBar', () => {
       );
     });
 
-    const tab = container.querySelectorAll('[role="tab"]')[1];
+    const renderedTabs = container.querySelectorAll('[role="tab"]');
+    expect(renderedTabs).toHaveLength(3);
+    const tab = renderedTabs[1];
     expect(tab).toBeTruthy();
     act(() => {
       tab?.dispatchEvent(
@@ -66,7 +68,9 @@ describe('TabBar', () => {
       );
     });
 
-    const tab = container.querySelectorAll('[role="tab"]')[1];
+    const renderedTabs = container.querySelectorAll('[role="tab"]');
+    expect(renderedTabs).toHaveLength(3);
+    const tab = renderedTabs[1];
     expect(tab).toBeTruthy();
     act(() => {
       tab?.dispatchEvent(

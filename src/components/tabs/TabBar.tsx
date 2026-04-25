@@ -70,12 +70,12 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onReorder, onNew }: 
               onKeyDown={(e) => {
                 if (e.shiftKey && e.key === 'ArrowLeft' && index > 0) {
                   e.preventDefault();
-                  onReorder(tab.id, tabs[index - 1]?.id ?? tab.id);
+                  onReorder(tab.id, tabs[index - 1]!.id);
                   return;
                 }
                 if (e.shiftKey && e.key === 'ArrowRight' && index < tabs.length - 1) {
                   e.preventDefault();
-                  onReorder(tab.id, tabs[index + 1]?.id ?? tab.id);
+                  onReorder(tab.id, tabs[index + 1]!.id);
                   return;
                 }
                 if (e.key === 'Enter' || e.key === ' ') {
