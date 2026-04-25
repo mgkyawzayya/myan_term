@@ -11,8 +11,9 @@ export function reorderTabs<T extends TabState>(
   if (sourceIndex === -1 || targetIndex === -1) return tabs;
 
   const next = [...tabs];
-  const [moved] = next.splice(sourceIndex, 1);
+  const moved = next[sourceIndex]!;
+  next.splice(sourceIndex, 1);
   const insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-  next.splice(insertIndex, 0, moved as T);
+  next.splice(insertIndex, 0, moved);
   return next;
 }

@@ -46,7 +46,7 @@ describe('TabBar', () => {
     const tab = renderedTabs[1];
     expect(tab).toBeTruthy();
     act(() => {
-      tab?.dispatchEvent(
+      tab!.dispatchEvent(
         new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowLeft', shiftKey: true }),
       );
     });
@@ -73,7 +73,7 @@ describe('TabBar', () => {
     const tab = renderedTabs[1];
     expect(tab).toBeTruthy();
     act(() => {
-      tab?.dispatchEvent(
+      tab!.dispatchEvent(
         new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight', shiftKey: true }),
       );
     });
