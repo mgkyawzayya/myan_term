@@ -109,8 +109,8 @@ export function Terminal({
       }
     }
 
-    term.registerCharacterJoiner(makeMyanmarJoiner());
     term.open(hostRef.current);
+    term.registerCharacterJoiner(makeMyanmarJoiner());
     try {
       fit.fit();
     } catch {

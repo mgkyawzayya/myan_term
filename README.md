@@ -16,13 +16,15 @@ the full product spec, architecture, and execution plan.
 
 ```bash
 # Prerequisites
-#   - Rust stable (rustup, edition 2021)
-#   - Node 20+ + pnpm 9+
+#   - Node 20+ + Corepack (`corepack enable`)
+#   - pnpm 10 (`corepack prepare pnpm@10 --activate`)
+#   - Rust 1.94.0 via rustup (matches rust-toolchain.toml)
 #   - Tauri 2 platform prereqs: https://v2.tauri.app/start/prerequisites/
 
+rustup toolchain install 1.94.0 --profile minimal --component rustfmt --component clippy
 pnpm install
-pnpm tauri dev          # dev build with hot reload
-pnpm tauri build        # signed release installer
+pnpm tauri:dev          # dev build with hot reload
+pnpm tauri:build        # release installer
 ```
 
 `pnpm dev` alone runs the React frontend in a browser preview without a PTY —
@@ -161,7 +163,7 @@ artefacts and emits a `*.sig` next to each installer:
 ```bash
 export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/myanterm.key)"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="…"
-pnpm tauri build
+pnpm tauri:build
 ```
 
 ### Bundle targets
@@ -171,6 +173,58 @@ pnpm tauri build
 formats plus macOS `.app`/`.dmg` and Windows `.msi`/`.nsis`. Linux `.deb`
 declares dependencies on `libwebkit2gtk-4.1-0` and `libgtk-3-0`; the AppImage
 disables `bundleMediaFramework` to keep the binary small (CLAUDE.md R10).
+
+### Clean local release builds
+
+Use this flow when you want a reproducible local release build from a clean
+workspace:
+
+```bash
+git clean -xfd
+corepack enable
+corepack prepare pnpm@10 --activate
+rustup toolchain install 1.94.0 --profile minimal --component rustfmt --component clippy
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+cargo test --manifest-path src-tauri/Cargo.toml
+pnpm tauri:build
+```
+
+Platform notes before the final `pnpm tauri:build`:
+
+| Platform | Extra requirements for a clean release build |
+| -------- | -------------------------------------------- |
+| macOS    | Install Xcode Command Line Tools (`xcode-select --install`). Add Apple signing/notarization env vars only if you want a signed/notarized `.app`/`.dmg`. |
+| Ubuntu   | Install the same packages as CI: `sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev pkg-config build-essential curl wget file`. |
+| Windows  | Install the Visual Studio C++ build tools and WebView2 prerequisites from the Tauri docs. Add `WINDOWS_CERTIFICATE` / `WINDOWS_CERTIFICATE_PASSWORD` only if you want a signed installer. |
+
+If the signing variables are unset, the local build still succeeds but produces
+unsigned artifacts — the same fallback used by `release.yml`.
+
+### Troubleshooting `cargo metadata` / rustup download failures
+
+If `pnpm tauri:build` fails before compilation with a `failed to run 'cargo
+metadata'` error while rustup is syncing `1.94.0` (for example on
+`aarch64-apple-darwin`), repair the local rustup cache and reinstall the pinned
+toolchain:
+
+```bash
+mkdir -p ~/.rustup/downloads ~/.rustup/tmp
+rm -f ~/.rustup/downloads/*.partial
+rustup self update
+rustup toolchain uninstall 1.94.0-aarch64-apple-darwin || true
+rustup toolchain install 1.94.0-aarch64-apple-darwin --profile minimal --component rustfmt --component clippy
+cargo metadata --manifest-path src-tauri/Cargo.toml --format-version 1 > /dev/null
+```
+
+Then rerun `pnpm tauri:build`. If rustup still cannot rename files inside
+`~/.rustup/downloads`, verify that directory exists and that your user has write
+permission to it.
 
 ## CI
 
