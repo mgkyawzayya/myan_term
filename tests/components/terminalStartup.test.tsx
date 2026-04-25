@@ -2,70 +2,69 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 
-const terminalState = {
+const terminalState = vi.hoisted(() => ({
   joinerRegisteredAfterOpen: false,
-};
+}));
 
-const openSpy = vi.fn();
-const registerCharacterJoinerSpy = vi.fn();
+const openSpy = vi.hoisted(() => vi.fn());
+const registerCharacterJoinerSpy = vi.hoisted(() => vi.fn());
 
-class MockTerminal {
-  cols = 80;
-  rows = 24;
-  options: Record<string, unknown> = {};
-  unicode = { activeVersion: '' };
-  parser = { registerOscHandler: vi.fn(() => ({ dispose: vi.fn() })) };
-  buffer = { active: { viewportY: 0, getLine: vi.fn(() => null) } };
-  element: HTMLDivElement | null = null;
-  private readonly _renderDisposable = { dispose: vi.fn() };
-  private readonly _scrollDisposable = { dispose: vi.fn() };
-  private readonly _resizeDisposable = { dispose: vi.fn() };
-  private readonly _cursorDisposable = { dispose: vi.fn() };
+vi.mock('@xterm/xterm', () => {
+  class MockTerminal {
+    cols = 80;
+    rows = 24;
+    options: Record<string, unknown> = {};
+    unicode = { activeVersion: '' };
+    parser = { registerOscHandler: vi.fn(() => ({ dispose: vi.fn() })) };
+    buffer = { active: { viewportY: 0, getLine: vi.fn(() => null) } };
+    element: HTMLDivElement | null = null;
+    private readonly _renderDisposable = { dispose: vi.fn() };
+    private readonly _scrollDisposable = { dispose: vi.fn() };
+    private readonly _resizeDisposable = { dispose: vi.fn() };
+    private readonly _cursorDisposable = { dispose: vi.fn() };
 
-  loadAddon = vi.fn();
-  onData = vi.fn();
-  onTitleChange = vi.fn();
-  onRender = vi.fn(() => this._renderDisposable);
-  onScroll = vi.fn(() => this._scrollDisposable);
-  onResize = vi.fn(() => this._resizeDisposable);
-  onCursorMove = vi.fn(() => this._cursorDisposable);
-  write = vi.fn();
-  resize = vi.fn();
-  dispose = vi.fn();
+    loadAddon = vi.fn();
+    onData = vi.fn();
+    onTitleChange = vi.fn();
+    onRender = vi.fn(() => this._renderDisposable);
+    onScroll = vi.fn(() => this._scrollDisposable);
+    onResize = vi.fn(() => this._resizeDisposable);
+    onCursorMove = vi.fn(() => this._cursorDisposable);
+    write = vi.fn();
+    resize = vi.fn();
+    dispose = vi.fn();
 
-  open(element: HTMLDivElement) {
-    this.element = element;
-    openSpy();
+    open(element: HTMLDivElement) {
+      this.element = element;
+      openSpy();
+    }
+
+    registerCharacterJoiner() {
+      registerCharacterJoinerSpy();
+      if (!this.element) throw new Error('Terminal must be opened first');
+      terminalState.joinerRegisteredAfterOpen = true;
+      return 1;
+    }
   }
 
-  registerCharacterJoiner() {
-    registerCharacterJoinerSpy();
-    if (!this.element) throw new Error('Terminal must be opened first');
-    terminalState.joinerRegisteredAfterOpen = true;
-    return 1;
-  }
-}
+  return { Terminal: MockTerminal };
+});
 
-class MockFitAddon {
-  fit = vi.fn();
-}
-
-class MockSearchAddon {}
-class MockSerializeAddon {}
-class MockUnicode11Addon {}
-class MockWebLinksAddon {}
-class MockWebglAddon {
-  onContextLoss = vi.fn();
-  dispose = vi.fn();
-}
-
-vi.mock('@xterm/xterm', () => ({ Terminal: MockTerminal }));
-vi.mock('@xterm/addon-fit', () => ({ FitAddon: MockFitAddon }));
-vi.mock('@xterm/addon-search', () => ({ SearchAddon: MockSearchAddon }));
-vi.mock('@xterm/addon-serialize', () => ({ SerializeAddon: MockSerializeAddon }));
-vi.mock('@xterm/addon-unicode11', () => ({ Unicode11Addon: MockUnicode11Addon }));
-vi.mock('@xterm/addon-web-links', () => ({ WebLinksAddon: MockWebLinksAddon }));
-vi.mock('@xterm/addon-webgl', () => ({ WebglAddon: MockWebglAddon }));
+vi.mock('@xterm/addon-fit', () => ({
+  FitAddon: class MockFitAddon {
+    fit = vi.fn();
+  },
+}));
+vi.mock('@xterm/addon-search', () => ({ SearchAddon: class MockSearchAddon {} }));
+vi.mock('@xterm/addon-serialize', () => ({ SerializeAddon: class MockSerializeAddon {} }));
+vi.mock('@xterm/addon-unicode11', () => ({ Unicode11Addon: class MockUnicode11Addon {} }));
+vi.mock('@xterm/addon-web-links', () => ({ WebLinksAddon: class MockWebLinksAddon {} }));
+vi.mock('@xterm/addon-webgl', () => ({
+  WebglAddon: class MockWebglAddon {
+    onContextLoss = vi.fn();
+    dispose = vi.fn();
+  },
+}));
 vi.mock('@/components/terminal/MyanmarOverlay', () => ({
   MyanmarOverlay: () => <div data-testid="overlay" />,
 }));
@@ -84,11 +83,18 @@ import { DEFAULT_SETTINGS } from '@/types';
 
 let container: HTMLDivElement;
 let root: Root;
+let originalResizeObserver: typeof globalThis.ResizeObserver | undefined;
 
 beforeEach(() => {
   terminalState.joinerRegisteredAfterOpen = false;
   openSpy.mockClear();
   registerCharacterJoinerSpy.mockClear();
+  originalResizeObserver = globalThis.ResizeObserver;
+  globalThis.ResizeObserver = class {
+    observe() {}
+    disconnect() {}
+    unobserve() {}
+  } as typeof ResizeObserver;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -99,6 +105,11 @@ afterEach(() => {
     root.unmount();
   });
   container.remove();
+  if (originalResizeObserver) {
+    globalThis.ResizeObserver = originalResizeObserver;
+  } else {
+    delete (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+  }
 });
 
 describe('Terminal startup ordering', () => {
