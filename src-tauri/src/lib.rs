@@ -10,6 +10,7 @@ mod errors;
 mod logging;
 mod profiles;
 mod pty;
+mod sessions;
 mod settings;
 
 use tauri::Manager;
@@ -29,6 +30,7 @@ pub fn run() {
             let handle = app.handle().clone();
             app.manage(pty::PtyManager::new(handle.clone()));
             app.manage(profiles::ProfileStore::load(&handle).unwrap_or_default());
+            app.manage(sessions::SessionStore::load(&handle).unwrap_or_default());
             app.manage(settings::SettingsStore::load(&handle).unwrap_or_default());
             tracing::info!("MyanTerm backend initialised");
             Ok(())
@@ -43,6 +45,8 @@ pub fn run() {
             commands::profile_save,
             commands::profile_delete,
             commands::profile_to_command,
+            commands::session_load,
+            commands::session_save,
             commands::ssh_config_hosts,
             commands::settings_get,
             commands::settings_set,

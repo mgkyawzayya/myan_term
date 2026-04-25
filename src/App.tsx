@@ -21,8 +21,11 @@ import {
   profileList,
   profileSave,
   profileToCommand,
+  sessionLoad,
+  sessionSave,
   settingsGet,
   settingsSet,
+  type SessionState,
 } from '@/lib/tauri';
 import { DEFAULT_SETTINGS, type Settings, type SshProfile, type TabState } from '@/types';
 
@@ -34,8 +37,12 @@ type StoredTab = TabState & {
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [tabs, setTabs] = useState<StoredTab[]>(() => [newTab()]);
-  const [activeId, setActiveId] = useState<string>(() => tabs[0]?.id ?? '');
+  // T-042: defer initial tab creation until session restore resolves so we
+  // never spawn a PTY for a layout we are about to throw away. `restored`
+  // gates the first render of any <Terminal>.
+  const [tabs, setTabs] = useState<StoredTab[]>([]);
+  const [activeId, setActiveId] = useState<string>('');
+  const [restored, setRestored] = useState(false);
   const [profiles, setProfiles] = useState<SshProfile[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -56,11 +63,118 @@ export default function App() {
       .catch(() => undefined);
   }, []);
 
+  // T-042: restore tab + pane-tree layout on launch. Buffer content is NOT
+  // restored — each leaf re-attaches to a fresh PTY. Robustness: any failure
+  // path falls back to a single fresh tab so a corrupt session.json never
+  // blocks startup (CLAUDE.md §1).
+  useEffect(() => {
+    if (!isTauri()) {
+      const fresh = newTab();
+      setTabs([fresh]);
+      setActiveId(fresh.id);
+      setRestored(true);
+      return;
+    }
+    void sessionLoad()
+      .then((state) => {
+        const restoredTabs: StoredTab[] = state.tabs.length
+          ? state.tabs.map((t) => {
+              const tree = safeAsPaneTree(t.pane_tree);
+              if (!tree) {
+                const leaf = newLeaf();
+                return {
+                  id: t.id,
+                  title: t.title,
+                  ptyId: null,
+                  cwd: t.cwd,
+                  paneTree: leaf,
+                  focusedLeafId: leaf.id,
+                  shellOverride: t.shell_override ?? undefined,
+                };
+              }
+              const leafIds = findLeafIds(tree);
+              const focused = leafIds.includes(t.focused_leaf_id)
+                ? t.focused_leaf_id
+                : (leafIds[0] ?? '');
+              return {
+                id: t.id,
+                title: t.title,
+                ptyId: null,
+                cwd: t.cwd,
+                paneTree: tree,
+                focusedLeafId: focused,
+                shellOverride: t.shell_override ?? undefined,
+              };
+            })
+          : [newTab()];
+        setTabs(restoredTabs);
+        const firstId = restoredTabs[0]?.id ?? '';
+        const wantedActive = state.active_tab_id ?? firstId;
+        const exists = restoredTabs.some((t) => t.id === wantedActive);
+        setActiveId(exists ? wantedActive : firstId);
+      })
+      .catch((err) => {
+        console.warn('session_load failed', err);
+        const fresh = newTab();
+        setTabs([fresh]);
+        setActiveId(fresh.id);
+      })
+      .finally(() => setRestored(true));
+  }, []);
+
   // Persist settings whenever they change.
   useEffect(() => {
     if (!isTauri()) return;
     void settingsSet(settings).catch(() => undefined);
   }, [settings]);
+
+  // T-042: build the session payload from the current tab list. Pulled out so
+  // both the debounced effect and the `beforeunload` synchronous save share a
+  // single source of truth.
+  const buildSessionState = useCallback((): SessionState => {
+    return {
+      schema_version: 1,
+      active_tab_id: activeIdRef.current || null,
+      tabs: tabsRef.current.map((t) => ({
+        id: t.id,
+        title: t.title,
+        cwd: t.cwd,
+        pane_tree: t.paneTree as unknown,
+        focused_leaf_id: t.focusedLeafId,
+        shell_override: t.shellOverride
+          ? { program: t.shellOverride.program, args: t.shellOverride.args }
+          : null,
+      })),
+    };
+  }, []);
+
+  // T-042: debounced session save on any tab/layout/active change. We wait
+  // 1s of quiet to coalesce bursty updates (e.g. keyboard-driven resize).
+  // CLAUDE.md R6 — persistence goes through Tauri commands, never localStorage.
+  // CLAUDE.md R9 — only console.warn on failure paths.
+  useEffect(() => {
+    if (!isTauri() || !restored) return;
+    const handle = window.setTimeout(() => {
+      void sessionSave(buildSessionState()).catch((err) =>
+        console.warn('session_save failed', err),
+      );
+    }, 1_000);
+    return () => window.clearTimeout(handle);
+  }, [tabs, activeId, restored, buildSessionState]);
+
+  // T-042: synchronous save on window close so a fast quit doesn't lose layout.
+  // The debounced effect above may still have a pending timer; this listener
+  // flushes the latest state regardless.
+  useEffect(() => {
+    if (!isTauri() || !restored) return;
+    const onBeforeUnload = () => {
+      void sessionSave(buildSessionState()).catch((err) =>
+        console.warn('session_save failed', err),
+      );
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [restored, buildSessionState]);
 
   const updateTab = useCallback((id: string, patch: Partial<StoredTab>) => {
     setTabs((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -300,6 +414,13 @@ export default function App() {
     };
   }, [activeTab, settings]);
 
+  // T-042: gate the first render of any <Terminal> on session restore having
+  // resolved. Spawning a PTY for a layout we are about to throw away wastes
+  // process slots and races with the restored layout's PTY spawns.
+  if (!restored) {
+    return <div className="flex h-screen w-screen bg-zinc-950 text-zinc-100" />;
+  }
+
   return (
     <div className="flex h-screen w-screen flex-col bg-zinc-950 text-zinc-100">
       <TabBar
@@ -406,6 +527,28 @@ function newTab(): StoredTab {
 function cryptoId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+/**
+ * Validate an unknown JSON value coming from `session.json` and narrow it to a
+ * `PaneNode`. We don't want a stale or malformed pane tree (e.g. one that
+ * predates a schema change) to crash the app on launch — see CLAUDE.md §1
+ * robustness contract. Returns `null` to signal "fall back to a fresh leaf".
+ *
+ * Strategy: piggy-back on `findLeafIds` — if it walks without throwing on a
+ * value cast to `PaneNode`, the structural invariants we care about
+ * (recursive `kind: 'leaf' | 'split'` with `children`/`id` fields) hold.
+ */
+export function safeAsPaneTree(value: unknown): PaneNode | null {
+  if (!value || typeof value !== 'object') return null;
+  const node = value as PaneNode;
+  if (node.kind !== 'leaf' && node.kind !== 'split') return null;
+  try {
+    const ids = findLeafIds(node);
+    return ids.length > 0 ? node : null;
+  } catch {
+    return null;
+  }
 }
 
 function buildSshArgvLocally(profile: SshProfile): string[] {

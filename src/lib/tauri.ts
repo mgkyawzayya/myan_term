@@ -38,5 +38,24 @@ export const settingsGet = (): Promise<Settings> => invoke('settings_get');
 export const settingsSet = (settings: Settings): Promise<void> =>
   invoke('settings_set', { settings });
 
+export type SessionTab = {
+  id: string;
+  title: string;
+  cwd: string | null;
+  pane_tree: unknown;
+  focused_leaf_id: string;
+  shell_override?: { program: string | null; args: string[] } | null;
+};
+
+export type SessionState = {
+  schema_version: number;
+  tabs: SessionTab[];
+  active_tab_id: string | null;
+};
+
+export const sessionLoad = (): Promise<SessionState> => invoke('session_load');
+export const sessionSave = (state: SessionState): Promise<void> =>
+  invoke('session_save', { state });
+
 export const isTauri = (): boolean =>
   typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;

@@ -4,6 +4,7 @@ use crate::errors::AppResult;
 use crate::profiles::ssh::{profile_to_command as build_command, SshCommand};
 use crate::profiles::{ProfileStore, SshProfile};
 use crate::pty::manager::{PtyManager, PtySpawnArgs};
+use crate::sessions::{SessionState, SessionStore};
 use crate::settings::{Settings, SettingsStore};
 
 #[tauri::command]
@@ -62,6 +63,16 @@ pub fn profile_to_command(id: String, store: State<'_, ProfileStore>) -> AppResu
         .get(&id)
         .ok_or(crate::errors::AppError::ProfileNotFound(id.clone()))?;
     Ok(build_command(&profile))
+}
+
+#[tauri::command]
+pub fn session_load(store: State<'_, SessionStore>) -> AppResult<SessionState> {
+    Ok(store.get())
+}
+
+#[tauri::command]
+pub fn session_save(state: SessionState, store: State<'_, SessionStore>) -> AppResult<()> {
+    store.set(state)
 }
 
 #[tauri::command]
