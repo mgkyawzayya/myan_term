@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { t } from '@/lib/i18n';
 import type { TabState } from '@/types';
 
@@ -7,6 +7,7 @@ export type TabBarProps = {
   activeId: string | null;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  onReorder: (sourceId: string, targetId: string) => void;
   onNew: () => void;
 };
 
@@ -18,13 +19,33 @@ export type TabBarProps = {
  * the close affordance is a real `<button>` with an explicit `aria-label`.
  * Focus rings use `focus-visible` so mouse users don't see the highlight.
  */
-export function TabBar({ tabs, activeId, onSelect, onClose, onNew }: TabBarProps) {
+export function TabBar({ tabs, activeId, onSelect, onClose, onReorder, onNew }: TabBarProps) {
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
   const handleClose = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
       e.stopPropagation();
       onClose(id);
     },
     [onClose],
+  );
+
+  const clearDragState = useCallback(() => {
+    setDraggedId(null);
+    setDragOverId(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    (targetId: string) => {
+      if (!draggedId || draggedId === targetId) {
+        clearDragState();
+        return;
+      }
+      onReorder(draggedId, targetId);
+      clearDragState();
+    },
+    [clearDragState, draggedId, onReorder],
   );
 
   return (
@@ -35,26 +56,58 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew }: TabBarProps
         aria-orientation="horizontal"
         className="flex flex-1 items-center gap-1 overflow-x-auto"
       >
-        {tabs.map((tab) => {
+        {tabs.map((tab, index) => {
           const isActive = tab.id === activeId;
           return (
             <div
               key={tab.id}
               role="tab"
               aria-selected={isActive}
+              aria-grabbed={draggedId === tab.id}
               tabIndex={isActive ? 0 : -1}
+              draggable
               onClick={() => onSelect(tab.id)}
               onKeyDown={(e) => {
+                if (e.shiftKey && e.key === 'ArrowLeft' && index > 0) {
+                  e.preventDefault();
+                  onReorder(tab.id, tabs[index - 1]!.id);
+                  return;
+                }
+                if (e.shiftKey && e.key === 'ArrowRight' && index < tabs.length - 1) {
+                  e.preventDefault();
+                  onReorder(tab.id, tabs[index + 1]!.id);
+                  return;
+                }
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   onSelect(tab.id);
                 }
               }}
+              onDragStart={(e) => {
+                setDraggedId(tab.id);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', tab.id);
+              }}
+              onDragEnter={() => {
+                if (draggedId && draggedId !== tab.id) setDragOverId(tab.id);
+              }}
+              onDragOver={(e) => {
+                if (!draggedId || draggedId === tab.id) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDrop(tab.id);
+              }}
+              onDragEnd={clearDragState}
               className={[
                 'group flex max-w-[220px] cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60',
                 isActive
                   ? 'bg-zinc-800/80 text-zinc-100'
                   : 'text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-200',
+                draggedId === tab.id ? 'opacity-60' : '',
+                dragOverId === tab.id && draggedId !== tab.id ? 'ring-2 ring-emerald-500/50' : '',
               ].join(' ')}
               title={tab.title}
             >
