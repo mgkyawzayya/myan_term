@@ -100,6 +100,26 @@ in the installer (also copy them to `src-tauri/fonts/`):
 Without these the renderer gracefully falls back to system fonts (Noto Sans
 Myanmar, Pyidaungsu).
 
+## CI
+
+Two GitHub Actions workflows live under `.github/workflows/`:
+
+- **`ci.yml`** — runs on every push and pull request. Contains three jobs:
+  `lint-and-test-frontend` (typecheck, ESLint, Vitest, Vite build) and
+  `lint-and-test-rust` (`cargo fmt --check`, `cargo clippy -D warnings`,
+  `cargo test`) on `ubuntu-22.04`, plus `build-tauri` on macOS, Linux, and
+  Windows that runs `pnpm tauri build --no-bundle` and uploads the resulting
+  binaries as artifacts.
+- **`release.yml`** — runs on tag pushes matching `v*`. Builds and publishes a
+  draft GitHub release across macOS, Linux, and Windows via
+  [`tauri-apps/tauri-action`](https://github.com/tauri-apps/tauri-action),
+  including `latest.json` for the updater plugin. Apple notarization and
+  Windows code signing are wired in through optional secrets — when they are
+  unset the build runs unsigned but still completes.
+
+`.github/dependabot.yml` keeps npm, Cargo, and GitHub Actions versions fresh
+weekly. See the repository's **Actions** tab for live status.
+
 ## License
 
 MIT OR Apache-2.0 (dual-licensed) for the source tree. Bundled fonts retain
