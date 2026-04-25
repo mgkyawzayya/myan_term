@@ -83,13 +83,9 @@ impl ProfileStore {
                 Ok(parsed) => parsed,
                 Err(err) => {
                     // T-056: a corrupt profiles.json must never block startup.
-                    tracing::warn!(
-                        "profiles.json parse failed; resetting to defaults: {err}"
-                    );
+                    tracing::warn!("profiles.json parse failed; resetting to defaults: {err}");
                     if let Err(emit_err) = app.emit(PROFILES_RESET_EVENT, ()) {
-                        tracing::warn!(
-                            "profiles.json reset event emit failed: {emit_err}"
-                        );
+                        tracing::warn!("profiles.json reset event emit failed: {emit_err}");
                     }
                     StoreFile::default()
                 }

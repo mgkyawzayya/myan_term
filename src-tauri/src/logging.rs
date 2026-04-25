@@ -3,7 +3,8 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 pub fn init() -> Option<WorkerGuard> {
-    let env_filter = EnvFilter::try_from_env("MYANTERM_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter =
+        EnvFilter::try_from_env("MYANTERM_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
 
     let (file_layer, guard) = match log_dir() {
         Some(dir) => {

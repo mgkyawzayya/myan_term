@@ -102,15 +102,11 @@ impl SettingsStore {
                     // T-056: a corrupt settings.json must never block startup.
                     // Log the error, fall back to defaults, and surface the
                     // event to the frontend so the user gets a toast.
-                    tracing::warn!(
-                        "settings.json parse failed; resetting to defaults: {err}"
-                    );
+                    tracing::warn!("settings.json parse failed; resetting to defaults: {err}");
                     // Emit best-effort: if the frontend isn't ready or emit
                     // fails, the user sees the next-launch defaults silently.
                     if let Err(emit_err) = app.emit(SETTINGS_RESET_EVENT, ()) {
-                        tracing::warn!(
-                            "settings.json reset event emit failed: {emit_err}"
-                        );
+                        tracing::warn!("settings.json reset event emit failed: {emit_err}");
                     }
                     Settings::default()
                 }

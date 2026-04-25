@@ -8,17 +8,16 @@ use crate::sessions::{SessionState, SessionStore};
 use crate::settings::{Settings, SettingsStore};
 
 #[tauri::command]
-pub fn pty_spawn(args: PtySpawnArgs, manager: State<'_, PtyManager>) -> AppResult<serde_json::Value> {
+pub fn pty_spawn(
+    args: PtySpawnArgs,
+    manager: State<'_, PtyManager>,
+) -> AppResult<serde_json::Value> {
     let id = manager.spawn(args)?;
     Ok(serde_json::json!({ "pty_id": id }))
 }
 
 #[tauri::command]
-pub fn pty_write(
-    pty_id: String,
-    data: String,
-    manager: State<'_, PtyManager>,
-) -> AppResult<()> {
+pub fn pty_write(pty_id: String, data: String, manager: State<'_, PtyManager>) -> AppResult<()> {
     manager.write(&pty_id, &data)
 }
 

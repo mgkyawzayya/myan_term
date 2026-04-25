@@ -98,7 +98,13 @@ mod tests {
         assert_eq!(
             cmd.argv,
             vec![
-                "ssh", "-p", "2222", "-i", "~/.ssh/id_ed25519", "-J", "bastion",
+                "ssh",
+                "-p",
+                "2222",
+                "-i",
+                "~/.ssh/id_ed25519",
+                "-J",
+                "bastion",
                 "alice@example.com"
             ]
         );
@@ -107,7 +113,11 @@ mod tests {
     #[test]
     fn extra_args_and_remote_command() {
         let mut p = base();
-        p.extra_args = Some(vec!["-A".into(), "-o".into(), "ServerAliveInterval=30".into()]);
+        p.extra_args = Some(vec![
+            "-A".into(),
+            "-o".into(),
+            "ServerAliveInterval=30".into(),
+        ]);
         p.remote_command = Some("tmux new -A -s main".into());
         let cmd = profile_to_command(&p);
         assert!(cmd.argv.contains(&"-A".to_string()));

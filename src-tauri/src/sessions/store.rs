@@ -176,7 +176,10 @@ mod tests {
         assert_eq!(parsed.tabs[0].id, "tab-1");
         assert_eq!(parsed.tabs[0].pane_tree, pane_tree);
         assert_eq!(parsed.tabs[0].focused_leaf_id, "leaf-a");
-        let shell = parsed.tabs[0].shell_override.as_ref().expect("shell override");
+        let shell = parsed.tabs[0]
+            .shell_override
+            .as_ref()
+            .expect("shell override");
         assert_eq!(shell.program.as_deref(), Some("/bin/zsh"));
         assert_eq!(shell.args, vec!["-l".to_string()]);
     }
