@@ -17,7 +17,9 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done · ⚠️ blocked
 > verification matrix (typecheck / vitest 34 ✅ / cargo test 4 ✅ / vite build /
 > cargo check / clippy `-D warnings`) green.
 >
-> Phase 2/3 in flight on branch `claude/develop-file-data-app-Tzpws`.
+> **Phase 2 (T-025 → T-043) complete** — Tabs with drag reordering, pane splits,
+> SSH profiles with ~/.ssh/config autocomplete, settings UI, 6 themes, command
+> palette, session restore, SSH compatibility tests. Tagged `v0.5.0-beta`.
 
 ---
 
@@ -65,34 +67,34 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done · ⚠️ blocked
 
 ### Week 5: Tabs
 
-- ⬜ **T-025** Tab bar component. Tab state (id, title, ptyId, cwd). Add/close/reorder via drag.
-- ⬜ **T-026** Multiple xterm instances per window, one per tab. Lazy-render hidden tabs (don't run renderer).
-- ⬜ **T-027** Parse OSC 7 (cwd) and OSC 0/2 (title) from PTY stream. Update tab title. New-tab-here uses cwd.
-- ⬜ **T-028** Keybindings: Cmd+T new tab, Cmd+W close, Cmd+Shift+] / [ next/prev tab. **Acceptance: 5 tabs, switching, closing, reordering all smooth.**
+- ✅ **T-025** Tab bar component. Tab state (id, title, ptyId, cwd). Add/close/reorder via drag.
+- ✅ **T-026** Multiple xterm instances per window, one per tab. Lazy-render hidden tabs (don't run renderer).
+- ✅ **T-027** Parse OSC 7 (cwd) and OSC 0/2 (title) from PTY stream. Update tab title. New-tab-here uses cwd.
+- ✅ **T-028** Keybindings: Cmd+T new tab, Cmd+W close, Cmd+Shift+] / [ next/prev tab. **Acceptance: 5 tabs, switching, closing, reordering all smooth.**
 
 ### Week 6: Splits
 
-- ⬜ **T-029** Pane tree data structure. Recursive Split | Leaf with horizontal/vertical orientation and resizable ratios.
-- ⬜ **T-030** SplitPane component using react-resizable-panels or custom. One xterm per leaf.
-- ⬜ **T-031** Keybindings: Cmd+D horizontal split, Cmd+Shift+D vertical, Cmd+arrow focus nav, Cmd+W close pane.
-- ⬜ **T-032** Drag dividers to resize. Fire SIGWINCH to PTYs on resize. **Acceptance: 4-pane grid, all resize smoothly, tmux works in nested splits.**
+- ✅ **T-029** Pane tree data structure. Recursive Split | Leaf with horizontal/vertical orientation and resizable ratios.
+- ✅ **T-030** SplitPane component using react-resizable-panels or custom. One xterm per leaf.
+- ✅ **T-031** Keybindings: Cmd+D horizontal split, Cmd+Shift+D vertical, Cmd+arrow focus nav, Cmd+W close pane.
+- ✅ **T-032** Drag dividers to resize. Fire SIGWINCH to PTYs on resize. **Acceptance: 4-pane grid, all resize smoothly, tmux works in nested splits.**
 
 ### Week 7: SSH
 
-- ⬜ **T-033** Define `SshProfile` type. Create `src-tauri/src/profiles/store.rs` for JSON persistence in app data dir.
-- ⬜ **T-034** Implement `profile_to_command` — maps profile fields to `ssh` argv (-p port, -i key, -J jump, etc).
-- ⬜ **T-035** Profile manager UI: list, add/edit form, delete with confirm. Use shadcn dialogs/forms.
-- ⬜ **T-036** "Quick connect" — open profile in new tab, runs the ssh command. **Acceptance: add profile for a remote host, click quick-connect, get remote shell.**
-- ⬜ **T-037** Read `~/.ssh/config` for host autocomplete in profile form (P1, may defer).
-- ⬜ **T-038** Run CT-09, CT-10 (SSH local + jump). **Acceptance: all CT tests pass over SSH.**
+- ✅ **T-033** Define `SshProfile` type. Create `src-tauri/src/profiles/store.rs` for JSON persistence in app data dir.
+- ✅ **T-034** Implement `profile_to_command` — maps profile fields to `ssh` argv (-p port, -i key, -J jump, etc).
+- ✅ **T-035** Profile manager UI: list, add/edit form, delete with confirm. Use shadcn dialogs/forms.
+- ✅ **T-036** "Quick connect" — open profile in new tab, runs the ssh command. **Acceptance: add profile for a remote host, click quick-connect, get remote shell.**
+- ✅ **T-037** Read `~/.ssh/config` for host autocomplete in profile form (P1, may defer).
+- ✅ **T-038** Run CT-09, CT-10 (SSH local + jump). **Acceptance: all CT tests pass over SSH.**
 
 ### Week 8: Settings + command palette
 
-- ⬜ **T-039** Settings UI (Cmd+,). Tabs: General, Appearance, Keybindings, Profiles, Advanced. Persist via tauri-plugin-store.
-- ⬜ **T-040** Built-in themes: One Dark, Solarized Dark/Light, Dracula, Nord, Tokyo Night. Theme switcher in settings.
-- ⬜ **T-041** Command palette (Cmd+Shift+P) using cmdk. Commands: New tab, New window, Open profile, Theme switch, Settings, Reload.
-- ⬜ **T-042** Session restore — on quit, save tab/pane structure to session.json. On launch, restore layout (NOT buffer content). **Acceptance: 6 tabs with splits → quit → relaunch → same layout.**
-- ⬜ **T-043** Phase 2 beta build. Tag `v0.5.0-beta`.
+- ✅ **T-039** Settings UI (Cmd+,). Tabs: General, Appearance, Keybindings, Profiles, Advanced. Persist via tauri-plugin-store.
+- ✅ **T-040** Built-in themes: One Dark, Solarized Dark/Light, Dracula, Nord, Tokyo Night. Theme switcher in settings.
+- ✅ **T-041** Command palette (Cmd+Shift+P) using cmdk. Commands: New tab, New window, Open profile, Theme switch, Settings, Reload.
+- ✅ **T-042** Session restore — on quit, save tab/pane structure to session.json. On launch, restore layout (NOT buffer content). **Acceptance: 6 tabs with splits → quit → relaunch → same layout.**
+- ✅ **T-043** Phase 2 beta build. Tag `v0.5.0-beta`.
 
 ---
 
@@ -108,22 +110,22 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done · ⚠️ blocked
 ### Week 10: Linux
 
 - ⬜ **T-048** Test on Ubuntu 24.04 + Fedora 43. WebKitGTK quirks: scrollbar, cursor blink, IME via IBus.
-- ⬜ **T-049** Linux packaging: .deb, .rpm, AppImage via Tauri bundler.
+- ✅ **T-049** Linux packaging: .deb, .rpm, AppImage via Tauri bundler.
 - ⬜ **T-050** Verify Padauk on Linux (fontconfig).
 
 ### Week 11: Distribution
 
 - ⬜ **T-051** Apple Developer ID setup. Code-sign macOS .dmg. Notarize via altool/notarytool.
 - ⬜ **T-052** Windows code-signing cert (Sectigo or similar). Sign .msi.
-- ⬜ **T-053** Configure tauri-plugin-updater. Self-hosted update endpoint or GitHub Releases.
-- ⬜ **T-054** Set up CI (GitHub Actions): build all three platforms, run tests, publish artifacts on tag.
+- ✅ **T-053** Configure tauri-plugin-updater. Self-hosted update endpoint or GitHub Releases.
+- ✅ **T-054** Set up CI (GitHub Actions): build all three platforms, run tests, publish artifacts on tag.
 
 ### Week 12: Polish
 
-- ⬜ **T-055** Accessibility audit — keyboard navigation everywhere, focus rings, ARIA labels.
-- ⬜ **T-056** Error handling — what happens when PTY dies, when font fails to load, when settings.json is corrupted.
-- ⬜ **T-057** Logging — `tracing` to file (rotating), error reports.
-- ⬜ **T-058** README, screenshots, GIFs. Documentation site.
+- ✅ **T-055** Accessibility audit — keyboard navigation everywhere, focus rings, ARIA labels.
+- ✅ **T-056** Error handling — what happens when PTY dies, when font fails to load, when settings.json is corrupted.
+- ✅ **T-057** Logging — `tracing` to file (rotating), error reports.
+- ✅ **T-058** README, screenshots, GIFs. Documentation site.
 
 ---
 

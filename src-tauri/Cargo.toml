@@ -1,6 +1,6 @@
 [package]
 name = "myanterm"
-version = "0.1.0"
+version = "0.5.0"
 description = "MyanTerm — cross-platform GPU-accelerated terminal emulator with first-class Myanmar text rendering"
 authors = ["KyawZayya"]
 edition = "2021"
