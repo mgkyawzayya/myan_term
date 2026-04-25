@@ -70,7 +70,7 @@ export function Terminal({
     if (!hostRef.current) return;
 
     const opts: ITerminalOptions = {
-      fontFamily: `${fontFamilyCode}, ${fontFamilyMyanmar}`,
+      fontFamily: fontFamilyCode,
       fontSize: settings.font.size,
       lineHeight: settings.font.line_height,
       letterSpacing: settings.font.letter_spacing,
@@ -197,7 +197,7 @@ export function Terminal({
   useEffect(() => {
     const t = termRef.current;
     if (!t) return;
-    t.options.fontFamily = `${fontFamilyCode}, ${fontFamilyMyanmar}`;
+    t.options.fontFamily = fontFamilyCode;
     t.options.fontSize = settings.font.size;
     t.options.lineHeight = settings.font.line_height;
     t.options.letterSpacing = settings.font.letter_spacing;
@@ -219,7 +219,6 @@ export function Terminal({
     settings.scrollback,
     settings.theme,
     fontFamilyCode,
-    fontFamilyMyanmar,
   ]);
 
   return (

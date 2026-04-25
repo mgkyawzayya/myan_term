@@ -4,6 +4,7 @@ import { act } from 'react';
 
 const terminalState = vi.hoisted(() => ({
   joinerRegisteredAfterOpen: false,
+  lastConstructorOptions: null as Record<string, unknown> | null,
 }));
 
 const openSpy = vi.hoisted(() => vi.fn());
@@ -13,7 +14,7 @@ vi.mock('@xterm/xterm', () => {
   class MockTerminal {
     cols = 80;
     rows = 24;
-    options: Record<string, unknown> = {};
+    options: Record<string, unknown>;
     unicode = { activeVersion: '' };
     parser = { registerOscHandler: vi.fn(() => ({ dispose: vi.fn() })) };
     buffer = { active: { viewportY: 0, getLine: vi.fn(() => null) } };
@@ -22,6 +23,11 @@ vi.mock('@xterm/xterm', () => {
     private readonly _scrollDisposable = { dispose: vi.fn() };
     private readonly _resizeDisposable = { dispose: vi.fn() };
     private readonly _cursorDisposable = { dispose: vi.fn() };
+
+    constructor(opts: Record<string, unknown> = {}) {
+      this.options = { ...opts };
+      terminalState.lastConstructorOptions = this.options;
+    }
 
     loadAddon = vi.fn();
     onData = vi.fn();
@@ -87,6 +93,7 @@ let originalResizeObserver: typeof globalThis.ResizeObserver | undefined;
 
 beforeEach(() => {
   terminalState.joinerRegisteredAfterOpen = false;
+  terminalState.lastConstructorOptions = null;
   openSpy.mockClear();
   registerCharacterJoinerSpy.mockClear();
   originalResizeObserver = globalThis.ResizeObserver;
@@ -123,5 +130,14 @@ describe('Terminal startup ordering', () => {
     expect(openSpy).toHaveBeenCalledTimes(1);
     expect(registerCharacterJoinerSpy).toHaveBeenCalledTimes(1);
     expect(terminalState.joinerRegisteredAfterOpen).toBe(true);
+  });
+
+  it('does not include Myanmar fonts in the xterm fontFamily stack', () => {
+    act(() => {
+      root.render(<Terminal settings={DEFAULT_SETTINGS} />);
+    });
+
+    const fontFamily = String(terminalState.lastConstructorOptions?.fontFamily ?? '');
+    expect(fontFamily).not.toMatch(/Padauk|Noto Sans Myanmar|Pyidaungsu/);
   });
 });
