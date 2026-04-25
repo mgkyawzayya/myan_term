@@ -4,6 +4,17 @@ import { TabBar } from '@/components/tabs/TabBar';
 import { CommandPalette, type PaletteAction } from '@/components/command-palette/CommandPalette';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { ProfileManager } from '@/components/profile-manager/ProfileManager';
+import { SplitPane } from '@/components/panes/SplitPane';
+import {
+  closeLeaf,
+  findLeafIds,
+  neighborLeaf,
+  newLeaf,
+  splitLeaf,
+  type PaneDirection,
+  type PaneNode,
+  type SplitOrientation,
+} from '@/components/panes/paneTree';
 import {
   isTauri,
   profileDelete,
@@ -17,11 +28,13 @@ import { DEFAULT_SETTINGS, type Settings, type SshProfile, type TabState } from 
 
 type StoredTab = TabState & {
   shellOverride?: { program: string | null; args: string[] };
+  paneTree: PaneNode;
+  focusedLeafId: string;
 };
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [tabs, setTabs] = useState<StoredTab[]>([newTab()]);
+  const [tabs, setTabs] = useState<StoredTab[]>(() => [newTab()]);
   const [activeId, setActiveId] = useState<string>(() => tabs[0]?.id ?? '');
   const [profiles, setProfiles] = useState<SshProfile[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -29,6 +42,8 @@ export default function App() {
   const [profilesOpen, setProfilesOpen] = useState(false);
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
 
   // Load persisted state.
   useEffect(() => {
@@ -47,11 +62,142 @@ export default function App() {
     void settingsSet(settings).catch(() => undefined);
   }, [settings]);
 
+  const updateTab = useCallback((id: string, patch: Partial<StoredTab>) => {
+    setTabs((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
+
+  const setTabPaneTree = useCallback(
+    (id: string, next: PaneNode) => {
+      updateTab(id, { paneTree: next });
+    },
+    [updateTab],
+  );
+
+  const setTabFocusedLeaf = useCallback(
+    (id: string, leafId: string) => {
+      updateTab(id, { focusedLeafId: leafId });
+    },
+    [updateTab],
+  );
+
+  const splitActiveLeaf = useCallback(
+    (orientation: SplitOrientation) => {
+      const list = tabsRef.current;
+      const activeIdNow = activeIdRef.current;
+      const tab = list.find((t) => t.id === activeIdNow);
+      if (!tab) return;
+      const { tree, newLeafId } = splitLeaf(tab.paneTree, tab.focusedLeafId, orientation);
+      if (tree === tab.paneTree) return;
+      updateTab(tab.id, { paneTree: tree, focusedLeafId: newLeafId });
+    },
+    [updateTab],
+  );
+
+  const focusNeighborInActive = useCallback(
+    (dir: PaneDirection) => {
+      const list = tabsRef.current;
+      const activeIdNow = activeIdRef.current;
+      const tab = list.find((t) => t.id === activeIdNow);
+      if (!tab) return false;
+      const id = neighborLeaf(tab.paneTree, tab.focusedLeafId, dir);
+      if (!id) return false;
+      updateTab(tab.id, { focusedLeafId: id });
+      return true;
+    },
+    [updateTab],
+  );
+
+  const openNewTab = useCallback((init?: Partial<StoredTab>) => {
+    const tab: StoredTab = { ...newTab(), ...init };
+    setTabs((cur) => [...cur, tab]);
+    setActiveId(tab.id);
+  }, []);
+
+  const closeTab = useCallback(
+    (id: string) => {
+      setTabs((cur) => {
+        const next = cur.filter((t) => t.id !== id);
+        if (next.length === 0) {
+          const fresh = newTab();
+          setActiveId(fresh.id);
+          return [fresh];
+        }
+        if (id === activeIdRef.current) {
+          const idx = cur.findIndex((t) => t.id === id);
+          const newActive = next[Math.max(0, Math.min(idx - 1, next.length - 1))];
+          if (newActive) setActiveId(newActive.id);
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const closeActiveTab = useCallback(() => {
+    closeTab(activeIdRef.current);
+  }, [closeTab]);
+
+  /**
+   * ⌘W: close the focused pane if the active tab has more than one leaf,
+   * otherwise close the tab.
+   */
+  const closeActivePaneOrTab = useCallback(() => {
+    const list = tabsRef.current;
+    const activeIdNow = activeIdRef.current;
+    const tab = list.find((t) => t.id === activeIdNow);
+    if (!tab) return;
+    const ids = findLeafIds(tab.paneTree);
+    if (ids.length <= 1) {
+      closeActiveTab();
+      return;
+    }
+    const next = closeLeaf(tab.paneTree, tab.focusedLeafId);
+    if (next === null) {
+      closeActiveTab();
+      return;
+    }
+    if (next === tab.paneTree) return;
+    const remaining = findLeafIds(next);
+    const focus = remaining[0] ?? tab.focusedLeafId;
+    updateTab(tab.id, { paneTree: next, focusedLeafId: focus });
+  }, [closeActiveTab, updateTab]);
+
+  const cycleTab = useCallback((delta: number) => {
+    setActiveId((cur) => {
+      const list = tabsRef.current;
+      const idx = list.findIndex((t) => t.id === cur);
+      if (idx === -1 || list.length === 0) return cur;
+      const next = list[(idx + delta + list.length) % list.length];
+      return next ? next.id : cur;
+    });
+  }, []);
+
   // Global keybindings.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
       if (!meta) return;
+      // Pane focus navigation: Cmd+Option+Arrow.
+      if (e.altKey) {
+        switch (e.key) {
+          case 'ArrowLeft':
+            e.preventDefault();
+            focusNeighborInActive('left');
+            return;
+          case 'ArrowRight':
+            e.preventDefault();
+            focusNeighborInActive('right');
+            return;
+          case 'ArrowUp':
+            e.preventDefault();
+            focusNeighborInActive('up');
+            return;
+          case 'ArrowDown':
+            e.preventDefault();
+            focusNeighborInActive('down');
+            return;
+        }
+      }
       switch (e.key.toLowerCase()) {
         case 't':
           e.preventDefault();
@@ -59,7 +205,11 @@ export default function App() {
           break;
         case 'w':
           e.preventDefault();
-          closeActiveTab();
+          closeActivePaneOrTab();
+          break;
+        case 'd':
+          e.preventDefault();
+          splitActiveLeaf(e.shiftKey ? 'vertical' : 'horizontal');
           break;
         case ',':
           e.preventDefault();
@@ -87,64 +237,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const openNewTab = useCallback((init?: Partial<StoredTab>) => {
-    const tab: StoredTab = { ...newTab(), ...init };
-    setTabs((cur) => [...cur, tab]);
-    setActiveId(tab.id);
-  }, []);
-
-  const closeActiveTab = useCallback(() => {
-    setTabs((cur) => {
-      if (cur.length === 0) return cur;
-      const next = cur.filter((t) => t.id !== activeId);
-      if (next.length === 0) {
-        const fresh = newTab();
-        setActiveId(fresh.id);
-        return [fresh];
-      }
-      const idx = cur.findIndex((t) => t.id === activeId);
-      const newActive = next[Math.max(0, Math.min(idx - 1, next.length - 1))];
-      if (newActive) setActiveId(newActive.id);
-      return next;
-    });
-  }, [activeId]);
-
-  const closeTab = useCallback(
-    (id: string) => {
-      setTabs((cur) => {
-        const next = cur.filter((t) => t.id !== id);
-        if (next.length === 0) {
-          const fresh = newTab();
-          setActiveId(fresh.id);
-          return [fresh];
-        }
-        if (id === activeId) {
-          const idx = cur.findIndex((t) => t.id === id);
-          const newActive = next[Math.max(0, Math.min(idx - 1, next.length - 1))];
-          if (newActive) setActiveId(newActive.id);
-        }
-        return next;
-      });
-    },
-    [activeId],
-  );
-
-  const cycleTab = useCallback((delta: number) => {
-    setActiveId((cur) => {
-      const list = tabsRef.current;
-      const idx = list.findIndex((t) => t.id === cur);
-      if (idx === -1 || list.length === 0) return cur;
-      const next = list[(idx + delta + list.length) % list.length];
-      return next ? next.id : cur;
-    });
-  }, []);
-
-  const updateTab = useCallback((id: string, patch: Partial<StoredTab>) => {
-    setTabs((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-  }, []);
+  }, [openNewTab, closeActivePaneOrTab, splitActiveLeaf, focusNeighborInActive, cycleTab]);
 
   const connectProfile = useCallback(
     async (profile: SshProfile) => {
@@ -217,20 +310,37 @@ export default function App() {
         onNew={() => openNewTab()}
       />
       <div className="relative flex-1">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className={tab.id === activeId ? 'absolute inset-0 block' : 'pointer-events-none absolute inset-0 hidden'}
-          >
-            <Terminal
-              settings={tab.id === activeId ? tabSettings : settings}
-              cwd={tab.cwd}
-              onTitle={(title) => updateTab(tab.id, { title })}
-              onCwd={(cwd) => updateTab(tab.id, { cwd })}
-              onPtyId={(ptyId) => updateTab(tab.id, { ptyId })}
-            />
-          </div>
-        ))}
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeId;
+          const settingsForTab = isActive ? tabSettings : settings;
+          return (
+            <div
+              key={tab.id}
+              className={
+                isActive
+                  ? 'absolute inset-0 block'
+                  : 'pointer-events-none absolute inset-0 hidden'
+              }
+            >
+              <SplitPane
+                tree={tab.paneTree}
+                focusedLeafId={tab.focusedLeafId}
+                onFocusLeaf={(leafId) => setTabFocusedLeaf(tab.id, leafId)}
+                onTreeChange={(next) => setTabPaneTree(tab.id, next)}
+                renderLeaf={(leafId) => (
+                  <Terminal
+                    key={leafId}
+                    settings={settingsForTab}
+                    cwd={tab.cwd}
+                    onTitle={(title) => updateTab(tab.id, { title })}
+                    onCwd={(cwd) => updateTab(tab.id, { cwd })}
+                    onPtyId={(ptyId) => updateTab(tab.id, { ptyId })}
+                  />
+                )}
+              />
+            </div>
+          );
+        })}
         <button
           type="button"
           onClick={() => setProfilesOpen(true)}
@@ -282,11 +392,14 @@ export default function App() {
 }
 
 function newTab(): StoredTab {
+  const leaf = newLeaf();
   return {
     id: cryptoId(),
     title: 'Terminal',
     ptyId: null,
     cwd: null,
+    paneTree: leaf,
+    focusedLeafId: leaf.id,
   };
 }
 

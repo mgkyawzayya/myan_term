@@ -28,6 +28,34 @@ pnpm tauri build        # signed release installer
 `pnpm dev` alone runs the React frontend in a browser preview without a PTY —
 useful for visual debugging.
 
+## Shortcuts
+
+`⌘` is used on macOS; on Linux/Windows substitute `Ctrl`. The Option/Alt key is
+written `⌥`.
+
+### Tabs
+
+| Shortcut    | Action                                  |
+| ----------- | --------------------------------------- |
+| `⌘T`        | New tab                                 |
+| `⌘W`        | Close focused pane (or tab if 1 pane)   |
+| `⌘⇧]`       | Next tab                                |
+| `⌘⇧[`       | Previous tab                            |
+| `⌘⇧P`       | Open command palette                    |
+| `⌘,`        | Open settings                           |
+
+### Panes
+
+| Shortcut    | Action                                                        |
+| ----------- | ------------------------------------------------------------- |
+| `⌘D`        | Split horizontally (side-by-side, vertical divider)           |
+| `⌘⇧D`       | Split vertically (stacked, horizontal divider)                |
+| `⌘⌥←/→/↑/↓` | Focus pane in the given direction                             |
+| `⌘W`        | Close the focused pane (collapses parent split if needed)     |
+
+Drag the divider between two panes to resize them. The PTY behind each pane is
+sent a SIGWINCH automatically so apps like `vim` and `tmux` reflow correctly.
+
 ## Layout
 
 ```
